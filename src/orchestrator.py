@@ -2,11 +2,12 @@
 Orchestrate all three code analysis agents in parallel and post a PR comment.
 
 Usage:
-    python src/orchestrator.py <owner/repo> <pr_number> [design-doc-path]
     python src/main.py <owner/repo> <pr_number> [design-doc-path]
+    python src/main.py <owner/repo> --test [diff-file] [design-doc-path]
 
-Example:
+Examples:
     python src/main.py manoj-github-avio/code-analyzer 5 design-doc-sample.docx
+    python src/main.py manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
 """
 
 import asyncio
@@ -14,6 +15,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 import anthropic
@@ -364,6 +366,30 @@ async def post_pr_comment(repo: str, pr_number: int, body: str) -> None:
 
 # ── Orchestration ───────────────────────────────────────────────────────────
 
+async def run_test_mode(repo: str, diff_file: str, design_doc_path: str) -> None:
+    """Dry-run: read diff from a local file, run all agents, print report. No GitHub fetch or PR post."""
+    diff_path = Path(diff_file)
+    if not diff_path.exists():
+        print(f"Error: diff file not found: {diff_file}", file=sys.stderr)
+        sys.exit(1)
+    diff = diff_path.read_text(encoding="utf-8")
+    print(f"[TEST MODE] Loaded {len(diff)} chars from {diff_file}", file=sys.stderr)
+    print(f"[TEST MODE] Running 3 agents in parallel...", file=sys.stderr)
+
+    t0 = time.perf_counter()
+    explanation, audit, alignment = await asyncio.gather(
+        run_explainer(diff),
+        run_auditor(repo, diff),
+        run_alignment(design_doc_path, diff),
+    )
+    elapsed = time.perf_counter() - t0
+
+    print(f"[TEST MODE] All agents complete in {elapsed:.1f}s. Formatting report...", file=sys.stderr)
+    report = format_report(repo, "test", explanation, audit, alignment)
+    print(report)
+    print(f"\n[TEST MODE] Done. Total time: {elapsed:.1f}s. No PR comment posted.", file=sys.stderr)
+
+
 async def run(repo: str, pr_number: int, design_doc_path: str) -> None:
     print(f"Fetching diff for {repo} PR #{pr_number}...", file=sys.stderr)
     diff = await fetch_pr_diff(repo, pr_number)
@@ -388,12 +414,25 @@ async def run(repo: str, pr_number: int, design_doc_path: str) -> None:
 
 
 def main() -> None:
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         print("Usage: python src/main.py <owner/repo> <pr_number> [design-doc-path]", file=sys.stderr)
+        print("       python src/main.py <owner/repo> --test [diff-file] [design-doc-path]", file=sys.stderr)
         print("Example: python src/main.py manoj-github-avio/code-analyzer 5 design-doc-sample.docx", file=sys.stderr)
+        print("Example: python src/main.py manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx", file=sys.stderr)
         sys.exit(1)
 
     repo = sys.argv[1]
+
+    if len(sys.argv) > 2 and sys.argv[2] == "--test":
+        diff_file = sys.argv[3] if len(sys.argv) > 3 else "sample-mule-pr.diff"
+        design_doc_path = sys.argv[4] if len(sys.argv) > 4 else "design-doc-sample.docx"
+        asyncio.run(run_test_mode(repo, diff_file, design_doc_path))
+        return
+
+    if len(sys.argv) < 3:
+        print("Error: pr_number required (or use --test for dry-run mode)", file=sys.stderr)
+        sys.exit(1)
+
     try:
         pr_number = int(sys.argv[2])
     except ValueError:
