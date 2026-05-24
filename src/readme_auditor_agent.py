@@ -6,7 +6,7 @@ Usage:
     cat my.diff | python src/readme_auditor_agent.py <owner/repo>
 
 Example:
-    python src/readme_auditor_agent.py owner/my-repo sample-mule-pr.diff
+    python src/readme_auditor_agent.py owner/my-repo samples/sample-mule-pr.diff
 """
 
 import asyncio

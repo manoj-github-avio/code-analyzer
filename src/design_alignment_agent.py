@@ -9,11 +9,11 @@ Arguments:
     owner/repo       GitHub repository (e.g. manoj-github-avio/code-analyzer)
     diff-file        Path to a .diff file (optional; reads from stdin if omitted)
     design-doc-path  Path to design doc (.docx, .md, .txt, .pdf)
-                     Defaults to design-doc-sample.docx
+                     Defaults to samples/design-doc-sample.docx
 
 Example:
-    python src/design_alignment_agent.py manoj-github-avio/code-analyzer sample-mule-pr.diff
-    python src/design_alignment_agent.py manoj-github-avio/code-analyzer sample-mule-pr.diff my-design.docx
+    python src/design_alignment_agent.py manoj-github-avio/code-analyzer samples/sample-mule-pr.diff
+    python src/design_alignment_agent.py manoj-github-avio/code-analyzer samples/sample-mule-pr.diff my-design.docx
 """
 
 import json
@@ -147,7 +147,7 @@ def main():
         sys.exit(1)
 
     repo = sys.argv[1]
-    doc_path = sys.argv[3] if len(sys.argv) > 3 else "design-doc-sample.docx"
+    doc_path = sys.argv[3] if len(sys.argv) > 3 else "samples/design-doc-sample.docx"
     diff = read_diff()
 
     if not diff.strip():

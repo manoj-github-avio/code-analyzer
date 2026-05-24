@@ -9,7 +9,7 @@ A MuleSoft knowledge skill (`skills/mulesoft/SKILL.md`) structured as a proper C
 with YAML frontmatter — discoverable by Claude Code, cacheable by the Anthropic API, and
 reusable across future agents (Phase 4, 5, 6) without duplication.
 
-A sample diff (`sample-mule-pr.diff`) for local testing without needing a real GitHub PR.
+A sample diff (`samples/sample-mule-pr.diff`) for local testing without needing a real GitHub PR.
 
 ---
 
@@ -19,7 +19,7 @@ A sample diff (`sample-mule-pr.diff`) for local testing without needing a real G
 |------|---------|
 | `src/explainer_agent.py` | CLI script — sends a diff to Claude, streams the explanation |
 | `skills/mulesoft/SKILL.md` | MuleSoft knowledge skill — proper Claude Skill format |
-| `sample-mule-pr.diff` | Realistic sample diff for testing |
+| `samples/sample-mule-pr.diff` | Realistic sample diff for testing |
 
 ---
 
@@ -86,7 +86,7 @@ echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env
 ### Run with the sample diff
 
 ```bash
-python src/explainer_agent.py sample-mule-pr.diff
+python src/explainer_agent.py samples/sample-mule-pr.diff
 ```
 
 ### Run with a real diff

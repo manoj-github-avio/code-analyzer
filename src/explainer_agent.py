@@ -2,7 +2,7 @@
 Explain a MuleSoft PR diff in plain English using the Claude API.
 
 Usage:
-    python src/explainer_agent.py sample-mule-pr.diff
+    python src/explainer_agent.py samples/sample-mule-pr.diff
     cat my.diff | python src/explainer_agent.py
 """
 
