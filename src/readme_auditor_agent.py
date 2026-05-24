@@ -9,15 +9,17 @@ Example:
     python src/readme_auditor_agent.py owner/my-repo sample-mule-pr.diff
 """
 
-import base64
+import asyncio
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
 import anthropic
-import httpx
 from dotenv import load_dotenv
+from mcp.client.session import ClientSession
+from mcp.client.stdio import StdioServerParameters, stdio_client
 
 load_dotenv()
 
@@ -51,50 +53,81 @@ Rules:
 """
 
 
-def get_markdown_files(repo: str, branch: str = "main") -> list[dict]:
-    token = os.getenv("GITHUB_TOKEN")
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
+def _github_mcp_params() -> StdioServerParameters:
+    token = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN") or os.getenv("GITHUB_TOKEN", "")
+    return StdioServerParameters(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-github"],
+        env={**os.environ, "GITHUB_PERSONAL_ACCESS_TOKEN": token},
+    )
+
+
+async def _call_tool(session: ClientSession, name: str, args: dict):
+    result = await session.call_tool(name, args)
+    if result.isError or not result.content:
+        return None
+    return json.loads(result.content[0].text)
+
+
+async def get_markdown_files(repo: str, branch: str | None = None) -> list[dict]:
+    """Fetch all .md files from a GitHub repo using the GitHub MCP server."""
     owner, repo_name = repo.split("/", 1)
 
-    branch_resp = httpx.get(
-        f"https://api.github.com/repos/{owner}/{repo_name}/branches/{branch}",
-        headers=headers,
-    )
-    branch_resp.raise_for_status()
-    tree_sha = branch_resp.json()["commit"]["commit"]["tree"]["sha"]
+    async with stdio_client(_github_mcp_params()) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
 
-    tree_resp = httpx.get(
-        f"https://api.github.com/repos/{owner}/{repo_name}/git/trees/{tree_sha}",
-        headers=headers,
-        params={"recursive": "1"},
-    )
-    tree_resp.raise_for_status()
+            # Primary: code search finds .md files across the whole repo
+            search_data = await _call_tool(session, "search_code", {
+                "q": f"repo:{owner}/{repo_name} extension:md",
+            })
+            items = search_data.get("items", []) if search_data else []
 
-    md_files = [
-        f for f in tree_resp.json().get("tree", [])
-        if f["path"].endswith(".md") and f["type"] == "blob"
-    ]
+            if items:
+                results = []
+                for item in items:
+                    args = {"owner": owner, "repo": repo_name, "path": item["path"]}
+                    if branch:
+                        args["branch"] = branch
+                    file_data = await _call_tool(session, "get_file_contents", args)
+                    if file_data and isinstance(file_data, dict):
+                        results.append({
+                            "filename": item["name"],
+                            "path": item["path"],
+                            "content": file_data.get("content", ""),
+                        })
+                return results
 
-    results = []
-    for file in md_files:
-        blob_resp = httpx.get(
-            f"https://api.github.com/repos/{owner}/{repo_name}/git/blobs/{file['sha']}",
-            headers=headers,
-        )
-        if blob_resp.status_code != 200:
-            continue
-        content = base64.b64decode(blob_resp.json()["content"]).decode("utf-8")
-        results.append({
-            "filename": file["path"].split("/")[-1],
-            "path": file["path"],
-            "content": content,
-        })
+            # Fallback: scan root directory (handles repos not yet indexed by GitHub search)
+            dir_args = {"owner": owner, "repo": repo_name, "path": ""}
+            if branch:
+                dir_args["branch"] = branch
+            listing = await _call_tool(session, "get_file_contents", dir_args)
+            if not isinstance(listing, list):
+                return []
 
-    return results
+            results = []
+            for item in listing:
+                if item.get("type") == "file" and item["name"].endswith(".md"):
+                    args = {"owner": owner, "repo": repo_name, "path": item["path"]}
+                    if branch:
+                        args["branch"] = branch
+                    file_data = await _call_tool(session, "get_file_contents", args)
+                    if file_data and isinstance(file_data, dict):
+                        results.append({
+                            "filename": item["name"],
+                            "path": item["path"],
+                            "content": file_data.get("content", ""),
+                        })
+            return results
+
+
+def _parse_json(text: str) -> dict:
+    text = text.strip()
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if match:
+        text = match.group(1).strip()
+    return json.loads(text)
 
 
 def audit_markdown_files(diff: str, files: list[dict]) -> dict:
@@ -113,7 +146,7 @@ def audit_markdown_files(diff: str, files: list[dict]) -> dict:
             }
         ],
     )
-    return json.loads(response.content[0].text)
+    return _parse_json(response.content[0].text)
 
 
 def read_diff() -> str:
@@ -153,7 +186,7 @@ def display_results(results: dict) -> None:
     print()
 
 
-def main():
+async def main():
     if len(sys.argv) < 2:
         print("Usage: python src/readme_auditor_agent.py <owner/repo> [diff-file]", file=sys.stderr)
         print("       cat my.diff | python src/readme_auditor_agent.py <owner/repo>", file=sys.stderr)
@@ -167,7 +200,7 @@ def main():
         sys.exit(1)
 
     print(f"Fetching markdown files from {repo}...", file=sys.stderr)
-    files = get_markdown_files(repo)
+    files = await get_markdown_files(repo)
     print(f"Found {len(files)} markdown file(s). Auditing...", file=sys.stderr)
 
     results = audit_markdown_files(diff, files)
@@ -175,4 +208,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

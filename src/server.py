@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 import anthropic
 from dotenv import load_dotenv
@@ -121,6 +122,14 @@ Rules:
 """
 
 
+def _parse_json(text: str) -> dict:
+    text = text.strip()
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if match:
+        text = match.group(1).strip()
+    return json.loads(text)
+
+
 @mcp.tool()
 def audit_markdown_files(diff: str, markdown_files_content: str) -> dict:
     """Audits markdown files against a PR diff. Returns structured update suggestions."""
@@ -139,7 +148,7 @@ def audit_markdown_files(diff: str, markdown_files_content: str) -> dict:
             }
         ],
     )
-    return json.loads(response.content[0].text)
+    return _parse_json(response.content[0].text)
 
 
 if __name__ == "__main__":
