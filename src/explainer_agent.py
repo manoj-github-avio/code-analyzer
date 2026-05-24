@@ -50,8 +50,8 @@ Use plain sentences. Avoid XML snippets. Define any MuleSoft terms you use on fi
 """
 
 
-def load_mulesoft_skill() -> str:
-    skill_path = SKILLS_DIR / "mulesoft.md"
+def load_skill(name: str) -> str:
+    skill_path = SKILLS_DIR / name / "SKILL.md"
     if not skill_path.exists():
         return ""
     return skill_path.read_text(encoding="utf-8")
@@ -73,7 +73,7 @@ def read_diff() -> str:
 
 def explain(diff: str) -> str:
     client = anthropic.Anthropic()
-    mulesoft_knowledge = load_mulesoft_skill()
+    mulesoft_knowledge = load_skill("mulesoft")
 
     system_blocks = []
 
@@ -93,7 +93,7 @@ def explain(diff: str) -> str:
     })
 
     with client.messages.stream(
-        model="claude-opus-4-7",
+        model="claude-sonnet-4-6",
         max_tokens=4096,
         thinking={"type": "adaptive"},
         system=system_blocks,

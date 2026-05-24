@@ -5,9 +5,9 @@
 A standalone Python script (`src/explainer_agent.py`) that reads a MuleSoft PR diff and produces
 a plain-English explanation readable by both MuleSoft developers and non-technical stakeholders.
 
-A reusable MuleSoft knowledge skill (`skills/mulesoft.md`) that teaches Claude about MuleSoft
-flows, DataWeave, connectors, error handling, and what to look for in a PR — loaded once and
-cached by the Anthropic API for cost efficiency.
+A MuleSoft knowledge skill (`skills/mulesoft/SKILL.md`) structured as a proper Claude Skill
+with YAML frontmatter — discoverable by Claude Code, cacheable by the Anthropic API, and
+reusable across future agents (Phase 4, 5, 6) without duplication.
 
 A sample diff (`sample-mule-pr.diff`) for local testing without needing a real GitHub PR.
 
@@ -18,8 +18,59 @@ A sample diff (`sample-mule-pr.diff`) for local testing without needing a real G
 | File | Purpose |
 |------|---------|
 | `src/explainer_agent.py` | CLI script — sends a diff to Claude, streams the explanation |
-| `skills/mulesoft.md` | Reusable MuleSoft knowledge base, cached via prompt caching |
+| `skills/mulesoft/SKILL.md` | MuleSoft knowledge skill — proper Claude Skill format |
 | `sample-mule-pr.diff` | Realistic sample diff for testing |
+
+---
+
+## Claude Skill Format
+
+Skills live in `skills/<name>/SKILL.md` and begin with YAML frontmatter:
+
+```markdown
+---
+name: mulesoft
+description: Expert MuleSoft Anypoint Platform knowledge — flows, DataWeave, connectors,
+             error handling, and PR review patterns.
+version: "1.0"
+tags: [mulesoft, integration, dataweave, anypoint, xml]
+---
+
+# MuleSoft Integration Expert
+...knowledge content...
+```
+
+### Why this structure?
+
+| Property | Value |
+|----------|-------|
+| **Discoverable** | Claude Code reads `skills/*/SKILL.md` automatically — no registration step needed. |
+| **Reusable** | Any agent loads a skill by name: `load_skill("mulesoft")`. |
+| **Cacheable** | Stable skill content is sent as a cached system block (prompt caching); repeat runs cost ~10% of normal input price. |
+| **Versioned** | `version:` field lets you evolve a skill without breaking agents pinned to an older copy. |
+
+### Reusing a skill in another agent
+
+```python
+from pathlib import Path
+
+SKILLS_DIR = Path(__file__).parent.parent / "skills"
+
+def load_skill(name: str) -> str:
+    skill_path = SKILLS_DIR / name / "SKILL.md"
+    if not skill_path.exists():
+        return ""
+    return skill_path.read_text(encoding="utf-8")
+
+# Load it as a cached system block
+skill_text = load_skill("mulesoft")
+system_blocks = [
+    {"type": "text", "text": skill_text, "cache_control": {"type": "ephemeral"}},
+    {"type": "text", "text": YOUR_AGENT_INSTRUCTIONS},
+]
+```
+
+Phase 4, 5, and 6 agents can reuse `load_skill("mulesoft")` without copying knowledge content.
 
 ---
 
@@ -28,10 +79,7 @@ A sample diff (`sample-mule-pr.diff`) for local testing without needing a real G
 ### Prerequisites
 
 ```bash
-# Install dependencies
 pip install -e .
-
-# Add your Anthropic API key to .env
 echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env
 ```
 
@@ -44,14 +92,8 @@ python src/explainer_agent.py sample-mule-pr.diff
 ### Run with a real diff
 
 ```bash
-# From a local git repo
 git diff HEAD~1 HEAD -- "*.xml" | python src/explainer_agent.py
-
-# From a saved diff file
 python src/explainer_agent.py my-pr.diff
-
-# Piped from another command
-cat pr-23.diff | python src/explainer_agent.py
 ```
 
 ---
@@ -59,9 +101,9 @@ cat pr-23.diff | python src/explainer_agent.py
 ## How It Works
 
 1. The script reads a diff from a file argument or stdin.
-2. It loads `skills/mulesoft.md` — a comprehensive MuleSoft reference document.
-3. It calls the Claude API (`claude-opus-4-7`) with:
-   - The MuleSoft knowledge base as a cached system block (prompt caching reduces cost on repeat runs).
+2. It loads `skills/mulesoft/SKILL.md` via `load_skill("mulesoft")`.
+3. It calls the Claude API (`claude-sonnet-4-6`) with:
+   - The MuleSoft skill as a cached system block.
    - The explanation instructions as a second cached system block.
    - The diff as the user message.
 4. The response streams to stdout as it arrives.
@@ -69,72 +111,16 @@ cat pr-23.diff | python src/explainer_agent.py
 
 ### Prompt caching
 
-The MuleSoft skill and the explanation instructions are marked with `cache_control: ephemeral`.
-On the first run the API writes them to cache (slightly higher cost). On subsequent runs within
-5 minutes the cached prefix is reused at ~10% of the normal input token cost.
-
----
-
-## Example Output
-
-Running against `sample-mule-pr.diff` (an order-processing flow that adds Salesforce integration):
-
-```
-## Summary
-This change extends the order-processing integration to also push orders into Salesforce,
-adds multi-currency support, and improves logging and error handling so failures are easier
-to diagnose and customers get a friendlier response when the database is unavailable.
-
-## What changed
-- Correlation ID tracking added. The incoming request's correlation ID is now saved into
-  a variable so it can be included in every log line for this order.
-- Order transformation enriched. The order total and line-item prices are now explicitly
-  converted to numbers. A currency field is captured, defaulting to "USD". Each line item
-  now has a calculated subtotal.
-- Database insert now stores currency. Previously hardcoded as 'USD'.
-- New step: write the order to Salesforce. After saving to the database, the flow now
-  creates a custom Order__c record in Salesforce.
-- Logging added. A log line is now emitted when order processing starts.
-- Error handling reworked (see below).
-
-## Systems involved
-- HTTP (inbound): unchanged, still triggered by POST /api/orders.
-- Orders database (existing): still used to insert order header and line items.
-- Salesforce (NEW): every order now writes to Salesforce. New external dependency.
-
-## Data flow
-1. HTTP POST arrives at /api/orders.
-2. Correlation ID captured.
-3. Order reshaped: numbers coerced, currency captured, subtotals calculated.
-4. Logged.
-5. Saved to database (with currency).
-6. Created in Salesforce.
-7. HTTP 200 returned: { "orderId": ..., "status": "accepted" }.
-
-## Error handling
-- Database connectivity errors previously returned 500; now return 503 with a friendly
-  "Service temporarily unavailable. Please retry." message. The flow is now considered
-  successful even when the DB is unreachable.
-- Salesforce errors are caught, logged, and re-thrown — caller sees 500.
-- Risk: if the DB write succeeds but Salesforce fails, the order exists in one system
-  but not the other. No compensating logic or retry queue is in place.
-
-## Impact assessment
-- Breaking: database outage response code changes from 500 to 503.
-- Breaking: currency column now stores real values, not always 'USD'.
-- New deployment requirement: Salesforce credentials must be configured in every environment.
-- Who should test: API consumers (503 handling), Salesforce admin (custom fields exist),
-  database/reporting team (currency now varies), QA (multi-currency, outage scenarios).
-```
+The MuleSoft skill and explanation instructions are marked `cache_control: ephemeral`.
+On the first run the API writes them to cache (slightly higher cost). On subsequent runs
+within 5 minutes the cached prefix is reused at ~10% of the normal input token cost.
 
 ---
 
 ## Architecture Notes
 
-- **No custom tools** — this is a single API call, not an agent loop. The diff is sent as
-  a user message and Claude returns the explanation directly.
-- **Streaming** — the explanation streams to stdout token-by-token for responsive UX.
+- **No custom tools** — single API call with streaming, not an agent loop.
 - **Adaptive thinking** — `thinking: {type: "adaptive"}` lets Claude reason through complex
   diffs before producing the explanation.
-- **Prompt caching** — the stable MuleSoft knowledge base and instructions are cached,
-  making repeated runs cheaper and faster.
+- **Generic skill loader** — `load_skill(name)` works for any skill in `skills/*/SKILL.md`,
+  making it trivial for Phase 4–6 agents to add domain knowledge without boilerplate.
