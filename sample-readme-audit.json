@@ -1,0 +1,32 @@
+{
+  "description": "Example input for the README auditor agent — shows the diff and markdown file content passed to audit_markdown_files()",
+  "diff": "diff --git a/src/server.py b/src/server.py\nindex abc123..def456 100644\n--- a/src/server.py\n+++ b/src/server.py\n@@ -1,6 +1,20 @@\n from fastmcp import FastMCP\n \n mcp = FastMCP(\"code-analyzer\")\n \n+@mcp.tool()\n+def health() -> dict:\n+    \"\"\"Returns service health including version and uptime.\"\"\"\n+    return {\"status\": \"ok\", \"version\": \"1.2.0\", \"uptime_seconds\": 3600}\n+\n @mcp.tool()\n def ping() -> dict:\n     return {\"status\": \"pong\"}",
+  "markdown_files": [
+    {
+      "filename": "README.md",
+      "path": "README.md",
+      "content": "# Code Analyzer\n\nAn MCP server for analyzing GitHub repos.\n\n## Tools\n\n### ping\nReturns `{\"status\": \"pong\"}`. Use this to verify the server is running.\n\n## Setup\n\n```bash\npip install -e .\npython src/server.py\n```\n"
+    },
+    {
+      "filename": "CONTRIBUTING.md",
+      "path": "CONTRIBUTING.md",
+      "content": "# Contributing\n\n## Running locally\n\n```bash\npip install -e .\npython src/server.py\n```\n\n## Adding a tool\n\nDecorate a function with `@mcp.tool()` in `src/server.py`.\n"
+    }
+  ],
+  "expected_output": {
+    "files_to_update": [
+      {
+        "file": "README.md",
+        "section": "Tools",
+        "status": "needs_update",
+        "suggestion": "Document the new 'health' tool, which returns service status, version (1.2.0), and uptime in seconds."
+      },
+      {
+        "file": "CONTRIBUTING.md",
+        "section": "Adding a tool",
+        "status": "up_to_date"
+      }
+    ],
+    "summary": "1 of 2 files needs updates"
+  }
+}
