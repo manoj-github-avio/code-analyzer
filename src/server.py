@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from pathlib import Path
 
 import anthropic
 from dotenv import load_dotenv
@@ -149,6 +150,38 @@ def audit_markdown_files(diff: str, markdown_files_content: str) -> dict:
         ],
     )
     return _parse_json(response.content[0].text)
+
+
+# ── Design Alignment Tools ────────────────────────────────────────────────────
+
+def _read_design_doc(file_path: str) -> str:
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Design document not found: {file_path}")
+    suffix = path.suffix.lower()
+    if suffix in (".md", ".txt"):
+        return path.read_text(encoding="utf-8")
+    if suffix == ".docx":
+        from docx import Document
+        doc = Document(str(path))
+        return "\n\n".join(p.text for p in doc.paragraphs if p.text.strip())
+    if suffix == ".pdf":
+        from pypdf import PdfReader
+        reader = PdfReader(str(path))
+        return "\n".join(p.extract_text() for p in reader.pages if p.extract_text())
+    raise ValueError(f"Unsupported format '{suffix}'. Supported: .md, .txt, .docx, .pdf")
+
+
+@mcp.tool()
+def read_design_doc(file_path: str) -> str:
+    """Reads a local design document (.md, .txt, .docx, .pdf) and returns its plain-text content."""
+    return _read_design_doc(file_path)
+
+
+@mcp.resource("design-doc://local/{path}")
+def design_doc_resource(path: str) -> str:
+    """Exposes a local design document as an MCP resource. URI: design-doc://local/{path}"""
+    return _read_design_doc(path)
 
 
 if __name__ == "__main__":
