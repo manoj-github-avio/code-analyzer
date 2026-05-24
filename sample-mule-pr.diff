@@ -1,0 +1,112 @@
+diff --git a/src/main/mule/order-processing.xml b/src/main/mule/order-processing.xml
+index 3a7c1b2..9f4d8ea 100644
+--- a/src/main/mule/order-processing.xml
++++ b/src/main/mule/order-processing.xml
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <mule xmlns="http://www.mulesoft.org/schema/mule/core"
+-      xmlns:http="http://www.mulesoft.org/schema/mule/http"
++      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+       xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+       xmlns:db="http://www.mulesoft.org/schema/mule/db"
+       xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc">
+@@ -15,6 +15,8 @@
+     <http:listener config-ref="HTTP_Listener_config" path="/api/orders" method="POST"
+                    doc:name="Receive Order"/>
+
++    <set-variable variableName="correlationId" value="#[correlationId]" doc:name="Save Correlation ID"/>
++
+     <ee:transform doc:name="Map incoming order">
+       <ee:message>
+         <ee:set-payload><![CDATA[%dw 2.0
+@@ -23,11 +25,17 @@
+ {
+   orderId:    payload.id,
+   customerId: payload.customer.id,
+-  total:      payload.amount,
++  total:      payload.amount as Number,
++  currency:   payload.currency default "USD",
+   lineItems: payload.lines map {
+     sku:      $.productCode,
+     qty:      $.quantity,
+-    price:    $.unitPrice
++    price:    $.unitPrice as Number,
++    subtotal: $.unitPrice as Number * $.quantity
+   }
+ }]]></ee:set-payload>
+       </ee:message>
+     </ee:transform>
+
++    <logger level="INFO"
++            message='#["[" ++ vars.correlationId ++ "] Processing order " ++ payload.orderId]'
++            doc:name="Log order start"/>
++
+     <db:insert config-ref="Orders_DB_Config" doc:name="Insert order header">
+       <db:sql>INSERT INTO orders (id, customer_id, total, currency)
+-              VALUES (:orderId, :customerId, :total, 'USD')</db:sql>
++              VALUES (:orderId, :customerId, :total, :currency)</db:sql>
+       <db:input-parameters><![CDATA[#[{
+         orderId:    payload.orderId,
+         customerId: payload.customerId,
+-        total:      payload.total
++        total:      payload.total,
++        currency:   payload.currency
+       }]]]></db:input-parameters>
+     </db:insert>
+
+@@ -48,14 +62,30 @@
+           </db:input-parameters>
+         </db:insert>
+       </foreach>
+-    </db:insert>
+
++    <sfdc:create config-ref="Salesforce_Config" type="Order__c" doc:name="Create Salesforce Order">
++      <sfdc:records><![CDATA[#[[{
++        MuleSoft_Order_Id__c: payload.orderId,
++        Customer_Id__c:       payload.customerId,
++        Total_Amount__c:      payload.total,
++        Currency_Code__c:     payload.currency,
++        Status__c:            "New"
++      }]]]]></sfdc:records>
++    </sfdc:create>
++
++    <set-variable variableName="salesforceId"
++                  value="#[payload[0].id]"
++                  doc:name="Save Salesforce record ID"/>
++
+     <set-payload value='#[{ "orderId": vars.orderId, "status": "accepted" }]'
+                  mimeType="application/json"
+                  doc:name="Build response"/>
+
+     <error-handler>
+-      <on-error-propagate type="DB:CONNECTIVITY">
++      <on-error-continue type="DB:CONNECTIVITY" logException="true">
+         <logger level="ERROR"
+-                message="#['Database error: ' ++ error.description]"/>
+-      </on-error-propagate>
++                message='#["[" ++ vars.correlationId ++ "] DB connectivity error: " ++ error.description]'/>
++        <set-payload value='#[{ "error": "Service temporarily unavailable. Please retry." }]'
++                     mimeType="application/json"/>
++        <http:response statusCode="503"/>
++      </on-error-continue>
++
++      <on-error-propagate type="SFDC:CONNECTIVITY, SFDC:REQUEST_FAILED">
++        <logger level="ERROR"
++                message='#["[" ++ vars.correlationId ++ "] Salesforce sync failed: " ++ error.description]'/>
++      </on-error-propagate>
+     </error-handler>
+
+   </flow>
+diff --git a/src/main/resources/config.yaml b/src/main/resources/config.yaml
+index 1c3ef10..7b8a4a9 100644
+--- a/src/main/resources/config.yaml
++++ b/src/main/resources/config.yaml
+@@ -4,3 +4,6 @@ http:
+ db:
+   host: "${db.host}"
+   port: "${db.port}"
++
++salesforce:
++  username: "${sfdc.username}"
++  password: "${sfdc.password}"
++  securityToken: "${sfdc.token}"
