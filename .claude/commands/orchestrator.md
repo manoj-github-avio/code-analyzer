@@ -19,5 +19,5 @@ Usage:
 Examples:
   /orchestrator manoj-github-avio/code-analyzer 5
   /orchestrator manoj-github-avio/code-analyzer 5 --no-post
-  /orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-  /orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+  /orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+  /orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx

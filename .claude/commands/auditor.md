@@ -15,4 +15,4 @@ Usage:
 
 Examples:
   /auditor manoj-github-avio/code-analyzer 5
-  /auditor manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+  /auditor manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff

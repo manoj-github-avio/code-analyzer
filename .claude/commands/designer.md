@@ -16,5 +16,5 @@ Usage:
 Examples:
   /designer manoj-github-avio/code-analyzer 5
   /designer manoj-github-avio/code-analyzer 5 my-design.docx
-  /designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-  /designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+  /designer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+  /designer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx

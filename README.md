@@ -25,21 +25,21 @@ After `pip install -e .`, the `code-analyzer` command is available anywhere in t
 
 ```bash
 # Full analysis — fetch diff, run all agents, post PR comment:
-code-analyzer orchestrator manoj-github-avio/code-analyzer 5 design-doc-sample.docx
+code-analyzer orchestrator manoj-github-avio/code-analyzer 5 samples/design-doc-sample.docx
 code-analyzer orchestrator manoj-github-avio/code-analyzer 5 --no-post   # preview without posting
 
 # Test mode — local diff file, no GitHub PR needed:
-code-analyzer orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+code-analyzer orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 
 # Run agents individually:
 code-analyzer explainer manoj-github-avio/code-analyzer 5
-code-analyzer explainer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+code-analyzer explainer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
 
 code-analyzer auditor manoj-github-avio/code-analyzer 5
-code-analyzer auditor manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+code-analyzer auditor manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
 
-code-analyzer designer manoj-github-avio/code-analyzer 5 design-doc-sample.docx
-code-analyzer designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+code-analyzer designer manoj-github-avio/code-analyzer 5 samples/design-doc-sample.docx
+code-analyzer designer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 
 # Help:
 code-analyzer --help
@@ -52,10 +52,10 @@ Four slash commands are defined in `.claude/commands/` and available inside any 
 session opened in this project:
 
 ```
-/explainer    manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-/auditor      manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-/designer     manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
-/orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+/explainer    manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+/auditor      manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+/designer     manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
+/orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 ```
 
 Each slash command tells Claude to run the corresponding `code-analyzer` CLI subcommand

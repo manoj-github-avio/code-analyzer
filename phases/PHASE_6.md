@@ -49,20 +49,20 @@ in the virtualenv after `pip install -e .`. Each subcommand supports `--help` an
 ```bash
 # Explainer — plain-English PR summary
 code-analyzer explainer manoj-github-avio/code-analyzer 5
-code-analyzer explainer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+code-analyzer explainer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
 
 # Auditor — README/markdown drift check
 code-analyzer auditor manoj-github-avio/code-analyzer 5
-code-analyzer auditor manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+code-analyzer auditor manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
 
 # Designer — design document alignment
 code-analyzer designer manoj-github-avio/code-analyzer 5
-code-analyzer designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+code-analyzer designer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 
 # Orchestrator — all three agents + PR comment
 code-analyzer orchestrator manoj-github-avio/code-analyzer 5
 code-analyzer orchestrator manoj-github-avio/code-analyzer 5 --no-post        # preview, no post
-code-analyzer orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+code-analyzer orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 
 # Help
 code-analyzer --help
@@ -81,16 +81,16 @@ Four project-level slash commands in `.claude/commands/` are available as `/expl
 
 ```
 /explainer    manoj-github-avio/code-analyzer 5
-/explainer    manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+/explainer    manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
 
 /auditor      manoj-github-avio/code-analyzer 5
-/auditor      manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+/auditor      manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
 
 /designer     manoj-github-avio/code-analyzer 5
-/designer     manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+/designer     manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 
 /orchestrator manoj-github-avio/code-analyzer 5
-/orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+/orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 ```
 
 Each slash command tells Claude to run the corresponding `code-analyzer` CLI subcommand and

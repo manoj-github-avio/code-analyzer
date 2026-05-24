@@ -68,13 +68,13 @@ def explainer_cmd(repo, target, test):
     \b
     Examples:
       code-analyzer explainer manoj-github-avio/code-analyzer 5
-      code-analyzer explainer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+      code-analyzer explainer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
     """
     from orchestrator import fetch_pr_diff, run_explainer
 
     async def _run():
         if test:
-            diff_file = target or "sample-mule-pr.diff"
+            diff_file = target or "samples/sample-mule-pr.diff"
             diff = _load_diff(diff_file)
             click.echo(f"[TEST] Loaded {len(diff)} chars from {diff_file}", err=True)
         else:
@@ -114,13 +114,13 @@ def auditor_cmd(repo, target, test):
     \b
     Examples:
       code-analyzer auditor manoj-github-avio/code-analyzer 5
-      code-analyzer auditor manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+      code-analyzer auditor manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
     """
     from orchestrator import fetch_pr_diff, run_auditor
 
     async def _run():
         if test:
-            diff_file = target or "sample-mule-pr.diff"
+            diff_file = target or "samples/sample-mule-pr.diff"
             diff = _load_diff(diff_file)
             click.echo(f"[TEST] Loaded {len(diff)} chars from {diff_file}", err=True)
         else:
@@ -171,7 +171,7 @@ def _show_audit(results: dict) -> None:
 @cli.command("designer")
 @click.argument("repo")
 @click.argument("target", required=False, default=None, metavar="PR_NUMBER_OR_DIFF")
-@click.argument("design_doc", required=False, default="design-doc-sample.docx",
+@click.argument("design_doc", required=False, default="samples/design-doc-sample.docx",
                 metavar="DESIGN_DOC")
 @click.option("--test", is_flag=True,
               help="Read diff from a local file instead of fetching from GitHub.")
@@ -181,20 +181,20 @@ def designer_cmd(repo, target, design_doc, test):
     \b
     REPO               GitHub repo (owner/repo)
     PR_NUMBER_OR_DIFF  PR number (real mode) or diff file path (--test mode)
-    DESIGN_DOC         Design doc path (.docx/.md/.txt/.pdf) [default: design-doc-sample.docx]
+    DESIGN_DOC         Design doc path (.docx/.md/.txt/.pdf) [default: samples/design-doc-sample.docx]
 
     \b
     Examples:
       code-analyzer designer manoj-github-avio/code-analyzer 5
       code-analyzer designer manoj-github-avio/code-analyzer 5 my-design.docx
-      code-analyzer designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-      code-analyzer designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+      code-analyzer designer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+      code-analyzer designer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
     """
     from orchestrator import fetch_pr_diff, run_alignment
 
     async def _run():
         if test:
-            diff_file = target or "sample-mule-pr.diff"
+            diff_file = target or "samples/sample-mule-pr.diff"
             diff = _load_diff(diff_file)
             click.echo(f"[TEST] Loaded {len(diff)} chars from {diff_file}", err=True)
         else:
@@ -248,7 +248,7 @@ def _show_alignment(results: dict) -> None:
 @cli.command("orchestrator")
 @click.argument("repo")
 @click.argument("target", required=False, default=None, metavar="PR_NUMBER_OR_DIFF")
-@click.argument("design_doc", required=False, default="design-doc-sample.docx",
+@click.argument("design_doc", required=False, default="samples/design-doc-sample.docx",
                 metavar="DESIGN_DOC")
 @click.option("--test", is_flag=True,
               help="Read diff from a local file; print report without posting PR comment.")
@@ -260,14 +260,14 @@ def orchestrator_cmd(repo, target, design_doc, test, no_post):
     \b
     REPO               GitHub repo (owner/repo)
     PR_NUMBER_OR_DIFF  PR number (real mode) or diff file path (--test mode)
-    DESIGN_DOC         Design doc path (.docx/.md/.txt/.pdf) [default: design-doc-sample.docx]
+    DESIGN_DOC         Design doc path (.docx/.md/.txt/.pdf) [default: samples/design-doc-sample.docx]
 
     \b
     Examples:
       code-analyzer orchestrator manoj-github-avio/code-analyzer 5
       code-analyzer orchestrator manoj-github-avio/code-analyzer 5 --no-post
-      code-analyzer orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-      code-analyzer orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+      code-analyzer orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+      code-analyzer orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
     """
     from orchestrator import (
         fetch_pr_diff,
@@ -280,7 +280,7 @@ def orchestrator_cmd(repo, target, design_doc, test, no_post):
 
     async def _run():
         if test:
-            diff_file = target or "sample-mule-pr.diff"
+            diff_file = target or "samples/sample-mule-pr.diff"
             diff = _load_diff(diff_file)
             click.echo(f"[TEST] Loaded {len(diff)} chars from {diff_file}", err=True)
             click.echo("[TEST] Running 3 agents in parallel...", err=True)

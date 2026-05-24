@@ -71,7 +71,7 @@ python src/readme_auditor_agent.py owner/repo my-pr.diff
 git diff HEAD~1 HEAD | python src/readme_auditor_agent.py owner/repo
 
 # Using the sample MuleSoft diff
-python src/readme_auditor_agent.py owner/repo sample-mule-pr.diff
+python src/readme_auditor_agent.py owner/repo samples/sample-mule-pr.diff
 ```
 
 ### Prerequisites

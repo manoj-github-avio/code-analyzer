@@ -16,4 +16,4 @@ Usage:
 
 Examples:
   /explainer manoj-github-avio/code-analyzer 5
-  /explainer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+  /explainer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff

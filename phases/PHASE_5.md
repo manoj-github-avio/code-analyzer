@@ -9,7 +9,7 @@ MCP resource URI.
 A standalone CLI agent (`src/design_alignment_agent.py`) that compares a PR diff against a
 design document and reports where the code aligns with or drifts from approved decisions.
 
-A sample design document (`design-doc-sample.docx`) — a real Word file created with
+A sample design document (`samples/design-doc-sample.docx`) — a real Word file created with
 python-docx — that captures architecture decisions for an order processing integration,
 including explicit scope boundaries for Phase 1 vs Phase 2/3 features.
 
@@ -21,7 +21,7 @@ including explicit scope boundaries for Phase 1 vs Phase 2/3 features.
 |------|--------|
 | `src/server.py` | Added `read_design_doc` tool, `design_doc_resource` MCP resource, `_read_design_doc` helper |
 | `src/design_alignment_agent.py` | New CLI agent |
-| `design-doc-sample.docx` | Sample design document (real .docx, not markdown) |
+| `samples/design-doc-sample.docx` | Sample design document (real .docx, not markdown) |
 | `requirements.txt` | Added `python-docx>=1.0.0` and `pypdf>=4.0.0` |
 
 ---
@@ -38,7 +38,7 @@ Reads a local design document and returns its plain-text content.
 
 ```python
 # Claude Desktop usage
-result = read_design_doc("design-doc-sample.docx")
+result = read_design_doc("samples/design-doc-sample.docx")
 ```
 
 ---
@@ -58,7 +58,7 @@ document by URI without calling a tool:
 
 ```
 # URI example
-design-doc://local/design-doc-sample.docx
+design-doc://local/samples/design-doc-sample.docx
 design-doc://local/docs/api-design.md
 ```
 
@@ -79,10 +79,10 @@ def design_doc_resource(path: str) -> str:
 
 ```bash
 # With a .docx design doc and a diff file
-python src/design_alignment_agent.py design-doc-sample.docx sample-mule-pr.diff
+python src/design_alignment_agent.py samples/design-doc-sample.docx samples/sample-mule-pr.diff
 
 # Piped diff
-git diff HEAD~1 HEAD | python src/design_alignment_agent.py design-doc-sample.docx
+git diff HEAD~1 HEAD | python src/design_alignment_agent.py samples/design-doc-sample.docx
 
 # Any supported format
 python src/design_alignment_agent.py design.md my-pr.diff
@@ -91,7 +91,7 @@ python src/design_alignment_agent.py design.md my-pr.diff
 ### Example output
 
 ```
-Reading design document: design-doc-sample.docx
+Reading design document: samples/design-doc-sample.docx
 Analyzing alignment (3338 chars)...
 
 === Design Alignment Report ===
