@@ -2,11 +2,18 @@
 Check a PR diff for alignment with a local design document.
 
 Usage:
-    python src/design_alignment_agent.py <design-doc> <diff-file>
-    cat my.diff | python src/design_alignment_agent.py <design-doc>
+    python src/design_alignment_agent.py <owner/repo> [diff-file] [design-doc-path]
+    cat my.diff | python src/design_alignment_agent.py <owner/repo>
+
+Arguments:
+    owner/repo       GitHub repository (e.g. manoj-github-avio/code-analyzer)
+    diff-file        Path to a .diff file (optional; reads from stdin if omitted)
+    design-doc-path  Path to design doc (.docx, .md, .txt, .pdf)
+                     Defaults to design-doc-sample.docx
 
 Example:
-    python src/design_alignment_agent.py design-doc-sample.docx sample-mule-pr.diff
+    python src/design_alignment_agent.py manoj-github-avio/code-analyzer sample-mule-pr.diff
+    python src/design_alignment_agent.py manoj-github-avio/code-analyzer sample-mule-pr.diff my-design.docx
 """
 
 import json
@@ -95,15 +102,16 @@ def analyze_alignment(design_doc: str, diff: str) -> dict:
 
 
 def read_diff() -> str:
+    # argv[1]=repo, argv[2]=diff-file, argv[3]=design-doc
     if len(sys.argv) > 2:
         diff_path = Path(sys.argv[2])
         if not diff_path.exists():
-            print(f"Error: file not found: {diff_path}", file=sys.stderr)
+            print(f"Error: diff file not found: {diff_path}", file=sys.stderr)
             sys.exit(1)
         return diff_path.read_text(encoding="utf-8")
     if not sys.stdin.isatty():
         return sys.stdin.read()
-    print("Usage: python src/design_alignment_agent.py <design-doc> [diff-file]", file=sys.stderr)
+    print("Usage: python src/design_alignment_agent.py <owner/repo> [diff-file] [design-doc-path]", file=sys.stderr)
     sys.exit(1)
 
 
@@ -134,18 +142,20 @@ def display_results(results: dict) -> None:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python src/design_alignment_agent.py <design-doc> [diff-file]", file=sys.stderr)
-        print("       cat my.diff | python src/design_alignment_agent.py <design-doc>", file=sys.stderr)
+        print("Usage: python src/design_alignment_agent.py <owner/repo> [diff-file] [design-doc-path]", file=sys.stderr)
+        print("       cat my.diff | python src/design_alignment_agent.py <owner/repo>", file=sys.stderr)
         sys.exit(1)
 
-    doc_path = sys.argv[1]
+    repo = sys.argv[1]
+    doc_path = sys.argv[3] if len(sys.argv) > 3 else "design-doc-sample.docx"
     diff = read_diff()
 
     if not diff.strip():
         print("Error: diff is empty.", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Reading design document: {doc_path}", file=sys.stderr)
+    print(f"Repo:            {repo}", file=sys.stderr)
+    print(f"Design document: {doc_path}", file=sys.stderr)
     design_doc = _read_design_doc(doc_path)
     print(f"Analyzing alignment ({len(design_doc)} chars)...", file=sys.stderr)
 
