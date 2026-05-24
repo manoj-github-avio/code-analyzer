@@ -1,9 +1,9 @@
-"""Entry point — delegates to orchestrator_command for full argument handling."""
+"""Entry point — delegates to the CLI orchestrator subcommand."""
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
-from commands.orchestrator_command import main
-
 if __name__ == "__main__":
-    main()
+    sys.path.insert(0, str(Path(__file__).parent))
+    sys.argv.insert(1, "orchestrator")
+    from cli import cli
+    cli()

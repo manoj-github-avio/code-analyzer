@@ -19,32 +19,25 @@ pip install -e .
 cp .env.example .env          # fill in ANTHROPIC_API_KEY and GITHUB_PERSONAL_ACCESS_TOKEN
 ```
 
-### Run the full PR analysis
+### From the terminal (CLI)
+
+After `pip install -e .`, the `code-analyzer` command is available anywhere in the virtualenv:
 
 ```bash
-# Via the code-analyzer CLI (registered by pip install -e .):
+# Full analysis — fetch diff, run all agents, post PR comment:
 code-analyzer orchestrator manoj-github-avio/code-analyzer 5 design-doc-sample.docx
-code-analyzer orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
 code-analyzer orchestrator manoj-github-avio/code-analyzer 5 --no-post   # preview without posting
 
-# Via python module (no install needed):
-python3 -m src.commands.orchestrator_command manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-```
+# Test mode — local diff file, no GitHub PR needed:
+code-analyzer orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
 
-### Run agents individually
-
-Each agent is a standalone CLI subcommand with `--help` and `--test` support:
-
-```bash
-# Explain a PR diff in plain English
+# Run agents individually:
 code-analyzer explainer manoj-github-avio/code-analyzer 5
 code-analyzer explainer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
 
-# Audit README/docs for staleness
 code-analyzer auditor manoj-github-avio/code-analyzer 5
 code-analyzer auditor manoj-github-avio/code-analyzer --test sample-mule-pr.diff
 
-# Check alignment with a design document
 code-analyzer designer manoj-github-avio/code-analyzer 5 design-doc-sample.docx
 code-analyzer designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
 
@@ -53,42 +46,41 @@ code-analyzer --help
 code-analyzer explainer --help
 ```
 
-### Claude Code slash commands
+### From Claude Code (slash commands)
 
-When working in this project in Claude Code, four slash commands are available:
+Four slash commands are defined in `.claude/commands/` and available inside any Claude Code
+session opened in this project:
 
 ```
-/explainer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-/auditor   manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-/designer  manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+/explainer    manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+/auditor      manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+/designer     manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
 /orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
 ```
 
-These are defined in `.claude/commands/` and tell Claude to run the corresponding
-`code-analyzer` CLI subcommand and display the output.
+Each slash command tells Claude to run the corresponding `code-analyzer` CLI subcommand
+and show the output.
 
 ---
 
 ## Architecture
 
 ```
-.claude/commands/*.md          ← Claude Code /slash commands
-  └── code-analyzer CLI        ← registered console script (pip install -e .)
-        └── src/cli.py         ← Click entry point, four subcommands
-              │
-src/main.py ──┤
-              └── src/commands/orchestrator_command.py  ← argparse, --test / --no-post
-                    │
-                    └── src/orchestrator.py             ← shared async business logic
-                          ├── fetch_pr_diff()           GitHub MCP → get_pull_request_files
-                          │
-                          ├── asyncio.gather()          ← runs all three in parallel
-                          │     ├── run_explainer()     Anthropic API + MuleSoft skill (cached)
-                          │     ├── run_auditor()       GitHub MCP → search_code / get_file_contents
-                          │     └── run_alignment()     local file read + Anthropic API
-                          │
-                          ├── format_report()           markdown aggregation
-                          └── post_pr_comment()         GitHub MCP → add_issue_comment
+Two entry points — same underlying logic:
+
+.claude/commands/*.md    ← /slash commands in Claude Code
+        │                   each tells Claude to run: code-analyzer <subcommand> ...
+        ▼
+src/cli.py               ← Click CLI, registered as 'code-analyzer' console script
+src/main.py              ← thin wrapper (python3 src/main.py → orchestrator subcommand)
+        │
+        └── src/orchestrator.py          ← all async agent logic
+              ├── fetch_pr_diff()        GitHub MCP → get_pull_request_files
+              ├── run_explainer()        Anthropic API + MuleSoft skill (prompt cached)
+              ├── run_auditor()          GitHub MCP + Anthropic API
+              ├── run_alignment()        local file read + Anthropic API
+              ├── format_report()        markdown aggregation
+              └── post_pr_comment()     GitHub MCP → add_issue_comment
 ```
 
 ### MCP server tools (src/server.py)

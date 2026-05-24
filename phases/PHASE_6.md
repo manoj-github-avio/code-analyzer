@@ -6,10 +6,10 @@ A single orchestrator (`src/orchestrator.py`) that runs all three analysis agent
 using `asyncio.gather()`, aggregates their results into a structured markdown report, and posts
 that report as a GitHub PR comment.
 
-Four individual command wrappers (`src/commands/`) as standalone entry points, a unified
-**Click CLI** (`src/cli.py`) registered as the `code-analyzer` shell command, and four
-**Claude Code slash commands** (`.claude/commands/`) that invoke the CLI directly from within
-a Claude Code session.
+Two complementary entry points that expose the same underlying logic:
+- **`src/cli.py`** — Click CLI registered as the `code-analyzer` shell command
+- **`.claude/commands/`** — four Claude Code slash commands (`/explainer`, `/auditor`,
+  `/designer`, `/orchestrator`)
 
 ---
 
@@ -17,14 +17,9 @@ a Claude Code session.
 
 | File | Purpose |
 |------|---------|
-| `src/orchestrator.py` | Shared async functions: fetch diff, run agents, format report, post comment |
-| `src/commands/__init__.py` | Exposes all four commands as importable entry points |
-| `src/commands/explainer_command.py` | Explain a PR diff in plain English |
-| `src/commands/auditor_command.py` | Audit README/markdown files against a diff |
-| `src/commands/designer_command.py` | Check alignment with a design document |
-| `src/commands/orchestrator_command.py` | Run all three agents in parallel, post PR comment |
-| `src/cli.py` | Click CLI — registers `code-analyzer` as a shell command with four subcommands |
-| `src/main.py` | Thin entry point — delegates to `orchestrator_command` |
+| `src/orchestrator.py` | All async agent logic: fetch diff, run agents, format report, post comment |
+| `src/cli.py` | Click CLI — `code-analyzer` shell command with four subcommands |
+| `src/main.py` | Thin entry point — `python3 src/main.py` delegates to orchestrator subcommand |
 | `.claude/commands/explainer.md` | `/explainer` slash command for Claude Code |
 | `.claude/commands/auditor.md` | `/auditor` slash command for Claude Code |
 | `.claude/commands/designer.md` | `/designer` slash command for Claude Code |
@@ -46,133 +41,61 @@ GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...
 
 ---
 
-### Run individual agents
+### Option 1: CLI in the terminal
 
-Each command supports `--help` for full usage, and `--test` for local dry-run mode.
-
-#### Explainer — plain-English PR summary
-
-```bash
-# Real mode — fetch diff from GitHub:
-python3 -m src.commands.explainer_command manoj-github-avio/code-analyzer 5
-
-# Test mode — use a local diff file:
-python3 -m src.commands.explainer_command manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-
-# Help:
-python3 -m src.commands.explainer_command --help
-```
-
-#### Auditor — README/markdown drift check
+The `code-analyzer` console script is registered by `pyproject.toml` and callable from anywhere
+in the virtualenv after `pip install -e .`. Each subcommand supports `--help` and `--test`.
 
 ```bash
-# Real mode:
-python3 -m src.commands.auditor_command manoj-github-avio/code-analyzer 5
-
-# Test mode (markdown files are still fetched from GitHub for the audit):
-python3 -m src.commands.auditor_command manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-
-# Help:
-python3 -m src.commands.auditor_command --help
-```
-
-#### Designer — design document alignment check
-
-```bash
-# Real mode:
-python3 -m src.commands.designer_command manoj-github-avio/code-analyzer 5
-python3 -m src.commands.designer_command manoj-github-avio/code-analyzer 5 my-design.docx
-
-# Test mode:
-python3 -m src.commands.designer_command manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-python3 -m src.commands.designer_command manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
-
-# Help:
-python3 -m src.commands.designer_command --help
-```
-
----
-
-### Run all agents together (orchestrator)
-
-```bash
-# Real mode — fetch diff, run all agents, post PR comment:
-python3 -m src.commands.orchestrator_command manoj-github-avio/code-analyzer 5
-python3 -m src.commands.orchestrator_command manoj-github-avio/code-analyzer 5 my-design.docx
-
-# Real mode without posting (preview the report):
-python3 -m src.commands.orchestrator_command manoj-github-avio/code-analyzer 5 --no-post
-
-# Test mode — local diff, no PR comment:
-python3 -m src.commands.orchestrator_command manoj-github-avio/code-analyzer --test sample-mule-pr.diff
-python3 -m src.commands.orchestrator_command manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
-
-# Via main.py (same as orchestrator_command):
-python3 src/main.py manoj-github-avio/code-analyzer 5 design-doc-sample.docx
-python3 src/main.py manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
-
-# Help:
-python3 -m src.commands.orchestrator_command --help
-```
-
----
-
-### code-analyzer CLI (after pip install -e .)
-
-The `code-analyzer` console script is registered by `pyproject.toml` and available anywhere
-in the virtualenv after installation:
-
-```bash
-# Explainer
+# Explainer — plain-English PR summary
 code-analyzer explainer manoj-github-avio/code-analyzer 5
 code-analyzer explainer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
 
-# Auditor
+# Auditor — README/markdown drift check
 code-analyzer auditor manoj-github-avio/code-analyzer 5
 code-analyzer auditor manoj-github-avio/code-analyzer --test sample-mule-pr.diff
 
-# Designer
+# Designer — design document alignment
 code-analyzer designer manoj-github-avio/code-analyzer 5
 code-analyzer designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
 
-# Orchestrator
+# Orchestrator — all three agents + PR comment
 code-analyzer orchestrator manoj-github-avio/code-analyzer 5
-code-analyzer orchestrator manoj-github-avio/code-analyzer 5 --no-post
+code-analyzer orchestrator manoj-github-avio/code-analyzer 5 --no-post        # preview, no post
 code-analyzer orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
 
-# Help for any subcommand
+# Help
 code-analyzer --help
 code-analyzer explainer --help
 ```
 
 ---
 
-### Claude Code slash commands
+### Option 2: Slash commands in Claude Code
 
-Four project-level slash commands are defined in `.claude/commands/`. They are available as
-`/explainer`, `/auditor`, `/designer`, and `/orchestrator` inside any Claude Code session
-opened in this project directory.
+Four project-level slash commands in `.claude/commands/` are available as `/explainer`,
+`/auditor`, `/designer`, and `/orchestrator` in any Claude Code session opened in this repo.
 
-> **Note:** Claude Code uses `/command` (slash), not `@command`. There is no `@command`
-> shortcut mechanism in Claude Code. Slash commands are the correct project shortcut system.
+> **Note:** Claude Code uses `/command` (slash), not `@command`. Slash commands are the
+> correct Claude Code shortcut system.
 
 ```
-/explainer manoj-github-avio/code-analyzer 5
-/explainer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+/explainer    manoj-github-avio/code-analyzer 5
+/explainer    manoj-github-avio/code-analyzer --test sample-mule-pr.diff
 
-/auditor manoj-github-avio/code-analyzer 5
-/auditor manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+/auditor      manoj-github-avio/code-analyzer 5
+/auditor      manoj-github-avio/code-analyzer --test sample-mule-pr.diff
 
-/designer manoj-github-avio/code-analyzer 5
-/designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+/designer     manoj-github-avio/code-analyzer 5
+/designer     manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
 
 /orchestrator manoj-github-avio/code-analyzer 5
 /orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
 ```
 
-Each slash command tells Claude to execute the corresponding `code-analyzer` CLI subcommand
-and display the output. The `$ARGUMENTS` placeholder is replaced with whatever you type after
-the slash command name.
+Each slash command tells Claude to run the corresponding `code-analyzer` CLI subcommand and
+display the output. `$ARGUMENTS` in the `.md` file is replaced with whatever you type after
+the command name.
 
 ---
 
@@ -290,9 +213,9 @@ Salesforce, adds multi-currency support, and revises error handling.
 
 ## Architecture Notes
 
-- **Individual commands** — each `src/commands/*_command.py` is a standalone entry point
-  that can be invoked with `python3 -m src.commands.<name>`. They share business logic
-  via `src/orchestrator.py` — no duplication.
+- **Two entry points, one logic layer** — `src/cli.py` (terminal) and `.claude/commands/`
+  (Claude Code slash commands) both call the same functions in `src/orchestrator.py`.
+  No duplication of agent logic.
 - **Parallel execution** — `asyncio.gather()` runs all three agents concurrently. The auditor
   opens its own short-lived GitHub MCP server subprocess.
 - **Async Anthropic client** — `anthropic.AsyncAnthropic()` lets all three Claude calls
