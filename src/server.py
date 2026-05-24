@@ -1,11 +1,11 @@
-import base64
 import json
 import os
 
 import anthropic
-import httpx
 from dotenv import load_dotenv
 from fastmcp import FastMCP
+from mcp.client.session import ClientSession
+from mcp.client.stdio import StdioServerParameters, stdio_client
 
 load_dotenv()
 
@@ -18,54 +18,77 @@ def ping() -> dict:
     return {"status": "pong"}
 
 
-@mcp.tool()
-def get_markdown_files(repo: str, branch: str = "main") -> list:
-    """Fetches all .md files from a GitHub repo. Returns [{filename, path, content}]."""
-    token = os.getenv("GITHUB_TOKEN")
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-    owner, repo_name = repo.split("/", 1)
-
-    # Resolve branch to its tree SHA
-    branch_resp = httpx.get(
-        f"https://api.github.com/repos/{owner}/{repo_name}/branches/{branch}",
-        headers=headers,
+def _github_mcp_params() -> StdioServerParameters:
+    token = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN") or os.getenv("GITHUB_TOKEN", "")
+    return StdioServerParameters(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-github"],
+        env={**os.environ, "GITHUB_PERSONAL_ACCESS_TOKEN": token},
     )
-    branch_resp.raise_for_status()
-    tree_sha = branch_resp.json()["commit"]["commit"]["tree"]["sha"]
 
-    # Fetch the full recursive file tree
-    tree_resp = httpx.get(
-        f"https://api.github.com/repos/{owner}/{repo_name}/git/trees/{tree_sha}",
-        headers=headers,
-        params={"recursive": "1"},
-    )
-    tree_resp.raise_for_status()
 
-    md_files = [
-        f for f in tree_resp.json().get("tree", [])
-        if f["path"].endswith(".md") and f["type"] == "blob"
-    ]
+async def _call_tool(session: ClientSession, name: str, args: dict):
+    result = await session.call_tool(name, args)
+    if result.isError or not result.content:
+        return None
+    return json.loads(result.content[0].text)
+
+
+async def _fetch_md_from_dir(session: ClientSession, owner: str, repo_name: str, path: str, branch: str) -> list:
+    """Lists a directory and returns [{filename, path, content}] for every .md file found."""
+    listing = await _call_tool(session, "get_file_contents", {
+        "owner": owner, "repo": repo_name, "path": path, "branch": branch,
+    })
+    if not isinstance(listing, list):
+        return []
 
     results = []
-    for file in md_files:
-        blob_resp = httpx.get(
-            f"https://api.github.com/repos/{owner}/{repo_name}/git/blobs/{file['sha']}",
-            headers=headers,
-        )
-        if blob_resp.status_code != 200:
-            continue
-        content = base64.b64decode(blob_resp.json()["content"]).decode("utf-8")
-        results.append({
-            "filename": file["path"].split("/")[-1],
-            "path": file["path"],
-            "content": content,
-        })
-
+    for item in listing:
+        if item.get("type") == "file" and item["name"].endswith(".md"):
+            file_data = await _call_tool(session, "get_file_contents", {
+                "owner": owner, "repo": repo_name, "path": item["path"], "branch": branch,
+            })
+            if file_data and isinstance(file_data, dict):
+                results.append({
+                    "filename": item["name"],
+                    "path": item["path"],
+                    "content": file_data.get("content", ""),
+                })
     return results
+
+
+@mcp.tool()
+async def get_markdown_files(repo: str, branch: str = "main") -> list:
+    """Fetches all .md files from a GitHub repo using the GitHub MCP server. Returns [{filename, path, content}]."""
+    owner, repo_name = repo.split("/", 1)
+
+    async with stdio_client(_github_mcp_params()) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+
+            # Primary: use code search to discover .md files across the whole repo
+            search_data = await _call_tool(session, "search_code", {
+                "q": f"repo:{owner}/{repo_name} extension:md",
+            })
+            items = search_data.get("items", []) if search_data else []
+
+            if items:
+                results = []
+                for item in items:
+                    file_data = await _call_tool(session, "get_file_contents", {
+                        "owner": owner, "repo": repo_name,
+                        "path": item["path"], "branch": branch,
+                    })
+                    if file_data and isinstance(file_data, dict):
+                        results.append({
+                            "filename": item["name"],
+                            "path": item["path"],
+                            "content": file_data.get("content", ""),
+                        })
+                return results
+
+            # Fallback: scan root directory directly (handles repos not yet indexed by GitHub search)
+            return await _fetch_md_from_dir(session, owner, repo_name, "", branch)
 
 
 _AUDIT_SYSTEM = """You are a technical writer auditing markdown documentation against a code PR diff.
