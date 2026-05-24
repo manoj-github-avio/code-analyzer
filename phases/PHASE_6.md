@@ -6,8 +6,10 @@ A single orchestrator (`src/orchestrator.py`) that runs all three analysis agent
 using `asyncio.gather()`, aggregates their results into a structured markdown report, and posts
 that report as a GitHub PR comment.
 
-Four individual command wrappers (`src/commands/`) that expose each agent — and the full
-orchestration — as standalone, directly callable entry points with `--help` and `--test` support.
+Four individual command wrappers (`src/commands/`) as standalone entry points, a unified
+**Click CLI** (`src/cli.py`) registered as the `code-analyzer` shell command, and four
+**Claude Code slash commands** (`.claude/commands/`) that invoke the CLI directly from within
+a Claude Code session.
 
 ---
 
@@ -21,7 +23,12 @@ orchestration — as standalone, directly callable entry points with `--help` an
 | `src/commands/auditor_command.py` | Audit README/markdown files against a diff |
 | `src/commands/designer_command.py` | Check alignment with a design document |
 | `src/commands/orchestrator_command.py` | Run all three agents in parallel, post PR comment |
+| `src/cli.py` | Click CLI — registers `code-analyzer` as a shell command with four subcommands |
 | `src/main.py` | Thin entry point — delegates to `orchestrator_command` |
+| `.claude/commands/explainer.md` | `/explainer` slash command for Claude Code |
+| `.claude/commands/auditor.md` | `/auditor` slash command for Claude Code |
+| `.claude/commands/designer.md` | `/designer` slash command for Claude Code |
+| `.claude/commands/orchestrator.md` | `/orchestrator` slash command for Claude Code |
 
 ---
 
@@ -107,6 +114,65 @@ python3 src/main.py manoj-github-avio/code-analyzer --test sample-mule-pr.diff d
 # Help:
 python3 -m src.commands.orchestrator_command --help
 ```
+
+---
+
+### code-analyzer CLI (after pip install -e .)
+
+The `code-analyzer` console script is registered by `pyproject.toml` and available anywhere
+in the virtualenv after installation:
+
+```bash
+# Explainer
+code-analyzer explainer manoj-github-avio/code-analyzer 5
+code-analyzer explainer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+
+# Auditor
+code-analyzer auditor manoj-github-avio/code-analyzer 5
+code-analyzer auditor manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+
+# Designer
+code-analyzer designer manoj-github-avio/code-analyzer 5
+code-analyzer designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+
+# Orchestrator
+code-analyzer orchestrator manoj-github-avio/code-analyzer 5
+code-analyzer orchestrator manoj-github-avio/code-analyzer 5 --no-post
+code-analyzer orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+
+# Help for any subcommand
+code-analyzer --help
+code-analyzer explainer --help
+```
+
+---
+
+### Claude Code slash commands
+
+Four project-level slash commands are defined in `.claude/commands/`. They are available as
+`/explainer`, `/auditor`, `/designer`, and `/orchestrator` inside any Claude Code session
+opened in this project directory.
+
+> **Note:** Claude Code uses `/command` (slash), not `@command`. There is no `@command`
+> shortcut mechanism in Claude Code. Slash commands are the correct project shortcut system.
+
+```
+/explainer manoj-github-avio/code-analyzer 5
+/explainer manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+
+/auditor manoj-github-avio/code-analyzer 5
+/auditor manoj-github-avio/code-analyzer --test sample-mule-pr.diff
+
+/designer manoj-github-avio/code-analyzer 5
+/designer manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+
+/orchestrator manoj-github-avio/code-analyzer 5
+/orchestrator manoj-github-avio/code-analyzer --test sample-mule-pr.diff design-doc-sample.docx
+```
+
+Each slash command tells Claude to execute the corresponding `code-analyzer` CLI subcommand
+and display the output. The `$ARGUMENTS` placeholder is replaced with whatever you type after
+the slash command name.
 
 ---
 
