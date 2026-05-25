@@ -16,7 +16,7 @@ load_dotenv()
 # Allow importing orchestrator from the same directory
 sys.path.insert(0, str(Path(__file__).parent))
 
-mcp = FastMCP("pr-analyzer")
+mcp = FastMCP("code-analyzer")
 
 DEFAULT_OWNER = "manoj-github-avio"
 
