@@ -110,7 +110,7 @@ src/main.py              ← thin wrapper (python3 src/main.py → orchestrator 
         │
         └── src/orchestrator.py          ← all async agent logic
               ├── fetch_pr_diff()              GitHub MCP → get_pull_request_files
-              ├── run_summarizer()             Anthropic API + MuleSoft skill (prompt cached)
+              ├── run_summarizer()             Anthropic API (prompt cached)
               ├── run_auditor()                GitHub MCP + Anthropic API (prompt cached)
               ├── run_alignment()              local file read + Anthropic API (prompt cached)
               ├── format_summary_comment()     markdown for summarizer PR comment
@@ -145,7 +145,7 @@ design-doc://local/{path}    →  exposes any local design doc as an MCP resourc
 |------|---------------|-------------|
 | [Step 1](phases/PHASE_1.md) | MCP server skeleton + `ping` tool | FastMCP, stdio transport |
 | [Step 2](phases/PHASE_2.md) | GitHub MCP server integration in Claude Desktop | MCP server composition |
-| [Step 3](phases/PHASE_3.md) | Summarizer CLI + Claude Skill format | Prompt caching, skills |
+| [Step 3](phases/PHASE_3.md) | Summarizer CLI + prompt caching | Prompt caching |
 | [Step 4](phases/PHASE_4.md) | Documentation auditor + GitHub MCP client from Python | MCP client SDK, async tools |
 | [Step 5](phases/PHASE_5.md) | Design alignment agent + `.docx` support | MCP resources, python-docx |
 | [Step 6](phases/PHASE_6.md) | Parallel orchestrator + PR comment posting | `asyncio.gather`, AsyncAnthropic |

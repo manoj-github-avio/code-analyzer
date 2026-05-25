@@ -13,8 +13,6 @@ import anthropic
 
 load_dotenv()
 
-SKILLS_DIR = Path(__file__).parent.parent / "skills"
-
 SYSTEM_PROMPT = """You are an expert MuleSoft integration engineer.
 
 Read a MuleSoft PR diff and produce a concise, factual explanation for developers and non-technical readers.
@@ -37,13 +35,6 @@ Do not include assumptions, guesses, or suggestions about intent.
 """
 
 
-def load_skill(name: str) -> str:
-    skill_path = SKILLS_DIR / name / "SKILL.md"
-    if not skill_path.exists():
-        return ""
-    return skill_path.read_text(encoding="utf-8")
-
-
 def read_diff() -> str:
     if len(sys.argv) > 1:
         diff_path = Path(sys.argv[1])
@@ -60,28 +51,12 @@ def read_diff() -> str:
 
 def summarize(diff: str) -> str:
     client = anthropic.Anthropic()
-    mulesoft_knowledge = load_skill("mulesoft")
-
-    system_blocks = []
-
-    if mulesoft_knowledge:
-        system_blocks.append({
-            "type": "text",
-            "text": mulesoft_knowledge,
-            "cache_control": {"type": "ephemeral"},
-        })
-
-    system_blocks.append({
-        "type": "text",
-        "text": SYSTEM_PROMPT,
-        "cache_control": {"type": "ephemeral"},
-    })
 
     with client.messages.stream(
         model="claude-sonnet-4-6",
         max_tokens=4096,
         thinking={"type": "adaptive"},
-        system=system_blocks,
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[
             {
                 "role": "user",

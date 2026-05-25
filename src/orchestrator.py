@@ -23,8 +23,6 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 
 load_dotenv()
 
-SKILLS_DIR = Path(__file__).parent.parent / "skills"
-
 
 # ── GitHub MCP helpers ──────────────────────────────────────────────────────
 
@@ -120,27 +118,15 @@ Do not include assumptions, guesses, or suggestions about intent."""
 
 
 async def run_summarizer(diff: str) -> str:
-    skill_path = SKILLS_DIR / "mulesoft" / "SKILL.md"
-    mulesoft_knowledge = skill_path.read_text(encoding="utf-8") if skill_path.exists() else ""
-
-    system_blocks = []
-    if mulesoft_knowledge:
-        system_blocks.append({
-            "type": "text",
-            "text": mulesoft_knowledge,
-            "cache_control": {"type": "ephemeral"},
-        })
-    system_blocks.append({
-        "type": "text",
-        "text": _SUMMARIZER_SYSTEM,
-        "cache_control": {"type": "ephemeral"},
-    })
-
     client = anthropic.AsyncAnthropic()
     response = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=2048,
-        system=system_blocks,
+        system=[{
+            "type": "text",
+            "text": _SUMMARIZER_SYSTEM,
+            "cache_control": {"type": "ephemeral"},
+        }],
         messages=[{
             "role": "user",
             "content": f"Please explain the following MuleSoft PR diff:\n\n```diff\n{diff}\n```",

@@ -164,27 +164,25 @@ All three API calls happen simultaneously, reducing total wall-clock time from ~
 
 ## 6. Claude Platform Skills
 
-Skills are reusable knowledge files injected into Claude's context at runtime. They live in `skills/<name>/SKILL.md`.
+Skills are reusable knowledge files injected into Claude's context at runtime — a way to supply domain knowledge that Claude doesn't have built in. They live in `skills/<name>/SKILL.md` and are read at runtime, then sent as a cached system block before the main system prompt.
 
-**How it works:**
-- The skill file is read from disk at runtime
-- It's injected as a system block before the main system prompt
-- With `cache_control: ephemeral`, it's cached so it doesn't cost input tokens on repeated calls
-
-**Example** (`src/summarizer_agent.py`):
+**Pattern:**
 ```python
-SKILLS_DIR = Path(__file__).parent.parent / "skills"
-
-skill_path = SKILLS_DIR / "mulesoft" / "SKILL.md"
-mulesoft_knowledge = skill_path.read_text(encoding="utf-8")
+skill_path = Path("skills/mulesoft/SKILL.md")
+knowledge = skill_path.read_text(encoding="utf-8")
 
 system_blocks = [
-    {"type": "text", "text": mulesoft_knowledge, "cache_control": {"type": "ephemeral"}},
-    {"type": "text", "text": SYSTEM_PROMPT,       "cache_control": {"type": "ephemeral"}},
+    {"type": "text", "text": knowledge,     "cache_control": {"type": "ephemeral"}},
+    {"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}},
 ]
 ```
 
-The `skills/mulesoft/SKILL.md` file contains domain knowledge about MuleSoft — flows, sub-flows, DataWeave, connectors — so Claude can interpret MuleSoft XML diffs accurately without that knowledge being part of every system prompt.
+**When to use:**
+- **Proprietary or internal knowledge** — internal APIs, custom frameworks, company-specific conventions that Claude hasn't seen in training.
+- **Rapidly evolving stacks** — libraries or protocols that postdate Claude's knowledge cutoff.
+- **Not needed for mainstream tech** — Claude already has strong built-in knowledge of well-documented technologies. This project initially injected a MuleSoft skill into the summarizer agent, but testing showed the summarizer produced equally accurate output without it. The skill was removed; Claude's built-in MuleSoft knowledge is sufficient.
+
+**Revisit skills when:** you notice Claude making systematic errors about proprietary concepts, internal naming conventions, or frameworks it genuinely hasn't seen — not just because the tech feels niche.
 
 ---
 
