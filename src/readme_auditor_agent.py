@@ -1,5 +1,5 @@
 """
-Audit markdown documentation files in a GitHub repo against a PR diff.
+Documentation Auditor Agent — audit markdown files in a GitHub repo against a PR diff.
 
 Usage:
     python src/readme_auditor_agent.py <owner/repo> <diff-file>
@@ -129,7 +129,11 @@ def audit_markdown_files(diff: str, files: list[dict]) -> dict:
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=2048,
-        system=_AUDIT_SYSTEM,
+        system=[{
+            "type": "text",
+            "text": _AUDIT_SYSTEM,
+            "cache_control": {"type": "ephemeral"},
+        }],
         messages=[
             {
                 "role": "user",
@@ -161,7 +165,7 @@ def display_results(results: dict) -> None:
     needs_update = [f for f in files if f.get("status") == "needs_update"]
     up_to_date = [f for f in files if f.get("status") == "up_to_date"]
 
-    print(f"\n=== README Audit Results ===")
+    print(f"\n=== Documentation Audit Results ===")
     print(f"Summary: {results.get('summary', '')}\n")
 
     if needs_update:

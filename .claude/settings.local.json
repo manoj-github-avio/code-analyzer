@@ -18,7 +18,10 @@
       "Bash(gh pr *)",
       "Bash(gh api *)",
       "Bash(echo \"# test\")",
-      "Bash(cp /tmp/test_change.md /Users/mambolla/code-analyzer/test_change.md)"
+      "Bash(cp /tmp/test_change.md /Users/mambolla/code-analyzer/test_change.md)",
+      "Bash(code-analyzer orchestrator *)",
+      "Bash(code-analyzer --help)",
+      "Bash(code-analyzer summarizer *)"
     ]
   }
 }

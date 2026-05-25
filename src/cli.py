@@ -4,7 +4,7 @@ code-analyzer CLI — unified Click entry point for all four agents.
 All agent logic is imported directly from orchestrator.py.
 
 Usage (after pip install -e .):
-    code-analyzer explainer    <repo> [PR_NUMBER_OR_DIFF] [--test]
+    code-analyzer summarizer   <repo> [PR_NUMBER_OR_DIFF] [--test]
     code-analyzer auditor      <repo> [PR_NUMBER_OR_DIFF] [--test]
     code-analyzer designer     <repo> [PR_NUMBER_OR_DIFF] [DESIGN_DOC] [--test]
     code-analyzer orchestrator <repo> [PR_NUMBER_OR_DIFF] [DESIGN_DOC] [--test] [--no-post]
@@ -51,15 +51,15 @@ def cli():
     """Code Analyzer — analyze GitHub pull requests with Claude."""
 
 
-# ── explainer ────────────────────────────────────────────────────────────────
+# ── summarizer ───────────────────────────────────────────────────────────────
 
-@cli.command("explainer")
+@cli.command("summarizer")
 @click.argument("repo")
 @click.argument("target", required=False, default=None, metavar="PR_NUMBER_OR_DIFF")
 @click.option("--test", is_flag=True,
               help="Read diff from a local file instead of fetching from GitHub.")
-def explainer_cmd(repo, target, test):
-    """Explain a PR diff in plain English using Claude.
+def summarizer_cmd(repo, target, test):
+    """Summarize a PR diff in plain English using Claude.
 
     \b
     REPO               GitHub repo (owner/repo)
@@ -67,10 +67,10 @@ def explainer_cmd(repo, target, test):
 
     \b
     Examples:
-      code-analyzer explainer manoj-github-avio/code-analyzer 5
-      code-analyzer explainer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+      code-analyzer summarizer manoj-github-avio/code-analyzer 5
+      code-analyzer summarizer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
     """
-    from orchestrator import fetch_pr_diff, run_explainer
+    from orchestrator import fetch_pr_diff, run_summarizer
 
     async def _run():
         if test:
@@ -86,9 +86,9 @@ def explainer_cmd(repo, target, test):
                 raise SystemExit(1)
             click.echo(f"Fetched {len(diff)} chars.", err=True)
 
-        click.echo("Running explainer...", err=True)
+        click.echo("Running summarizer...", err=True)
         t0 = time.perf_counter()
-        explanation = await run_explainer(diff)
+        explanation = await run_summarizer(diff)
         elapsed = time.perf_counter() - t0
 
         click.echo(explanation)
@@ -148,7 +148,7 @@ def _show_audit(results: dict) -> None:
     needs_update = [f for f in files if f.get("status") == "needs_update"]
     up_to_date = [f for f in files if f.get("status") == "up_to_date"]
 
-    click.echo("\n=== README Audit Results ===")
+    click.echo("\n=== Documentation Audit Results ===")
     click.echo(f"Summary: {results.get('summary', '')}\n")
 
     if needs_update:
@@ -275,7 +275,7 @@ def orchestrator_cmd(repo, target, design_doc, test, no_post):
         post_pr_comment,
         run_alignment,
         run_auditor,
-        run_explainer,
+        run_summarizer,
     )
 
     async def _run():
@@ -287,7 +287,7 @@ def orchestrator_cmd(repo, target, design_doc, test, no_post):
 
             t0 = time.perf_counter()
             explanation, audit, alignment = await asyncio.gather(
-                run_explainer(diff),
+                run_summarizer(diff),
                 run_auditor(repo, diff),
                 run_alignment(design_doc, diff),
             )
@@ -308,7 +308,7 @@ def orchestrator_cmd(repo, target, design_doc, test, no_post):
 
             t0 = time.perf_counter()
             explanation, audit, alignment = await asyncio.gather(
-                run_explainer(diff),
+                run_summarizer(diff),
                 run_auditor(repo, diff),
                 run_alignment(design_doc, diff),
             )

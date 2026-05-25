@@ -1,9 +1,9 @@
 """
-Explain a MuleSoft PR diff in plain English using the Claude API.
+Summarizer Agent — explain a MuleSoft PR diff in plain English using the Claude API.
 
 Usage:
-    python src/explainer_agent.py samples/sample-mule-pr.diff
-    cat my.diff | python src/explainer_agent.py
+    python src/summarizer_agent.py samples/sample-mule-pr.diff
+    cat my.diff | python src/summarizer_agent.py
 """
 
 import sys
@@ -53,18 +53,17 @@ def read_diff() -> str:
         return diff_path.read_text(encoding="utf-8")
     if not sys.stdin.isatty():
         return sys.stdin.read()
-    print("Usage: python src/explainer_agent.py <diff-file>", file=sys.stderr)
-    print("       cat my.diff | python src/explainer_agent.py", file=sys.stderr)
+    print("Usage: python src/summarizer_agent.py <diff-file>", file=sys.stderr)
+    print("       cat my.diff | python src/summarizer_agent.py", file=sys.stderr)
     sys.exit(1)
 
 
-def explain(diff: str) -> str:
+def summarize(diff: str) -> str:
     client = anthropic.Anthropic()
     mulesoft_knowledge = load_skill("mulesoft")
 
     system_blocks = []
 
-    # Cache the stable MuleSoft knowledge base
     if mulesoft_knowledge:
         system_blocks.append({
             "type": "text",
@@ -72,7 +71,6 @@ def explain(diff: str) -> str:
             "cache_control": {"type": "ephemeral"},
         })
 
-    # The explanation instructions are also stable — cache them too
     system_blocks.append({
         "type": "text",
         "text": SYSTEM_PROMPT,
@@ -115,7 +113,7 @@ def main():
     if not diff.strip():
         print("Error: diff is empty.", file=sys.stderr)
         sys.exit(1)
-    explain(diff)
+    summarize(diff)
 
 
 if __name__ == "__main__":

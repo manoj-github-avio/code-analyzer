@@ -6,7 +6,7 @@ Execute this bash command and show the full output:
 code-analyzer orchestrator $ARGUMENTS
 ```
 
-The orchestrator runs the explainer, auditor, and designer agents concurrently using asyncio.gather().
+The orchestrator runs the summarizer, auditor, and designer agents concurrently using asyncio.gather().
 In real mode it fetches the diff from GitHub and posts the report as a PR comment.
 In test mode it reads a local diff file and prints the report without posting.
 Use --no-post in real mode to preview the report before posting.

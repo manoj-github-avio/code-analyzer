@@ -1,5 +1,5 @@
 """
-Check a PR diff for alignment with a local design document.
+Design Alignment Agent — check a PR diff for alignment with a local design document.
 
 Usage:
     python src/design_alignment_agent.py <owner/repo> [diff-file] [design-doc-path]
@@ -81,15 +81,25 @@ def analyze_alignment(design_doc: str, diff: str) -> dict:
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=3000,
-        system=_ALIGNMENT_SYSTEM,
+        system=[{
+            "type": "text",
+            "text": _ALIGNMENT_SYSTEM,
+            "cache_control": {"type": "ephemeral"},
+        }],
         messages=[
             {
                 "role": "user",
-                "content": (
-                    f"Design document:\n\n{design_doc}\n\n"
-                    f"---\n\n"
-                    f"PR diff:\n```diff\n{diff}\n```"
-                ),
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Design document:\n\n{design_doc}",
+                        "cache_control": {"type": "ephemeral"},
+                    },
+                    {
+                        "type": "text",
+                        "text": f"\n\n---\n\nPR diff:\n```diff\n{diff}\n```",
+                    },
+                ],
             }
         ],
     )

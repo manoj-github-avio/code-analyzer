@@ -3,9 +3,9 @@ Shared async agent logic for the code-analyzer CLI.
 
 Imported by src/cli.py. Functions:
     fetch_pr_diff()    — fetch a unified diff from GitHub via MCP
-    run_explainer()    — plain-English PR summary (AsyncAnthropic, prompt cached)
-    run_auditor()      — markdown doc audit (GitHub MCP + AsyncAnthropic)
-    run_alignment()    — design doc alignment check (AsyncAnthropic)
+    run_summarizer()   — plain-English PR summary (AsyncAnthropic, prompt cached)
+    run_auditor()      — markdown doc audit (GitHub MCP + AsyncAnthropic, prompt cached)
+    run_alignment()    — design doc alignment check (AsyncAnthropic, prompt cached)
     format_report()    — aggregate results into a markdown PR comment
     post_pr_comment()  — post the report to GitHub via MCP
 """
@@ -94,9 +94,9 @@ async def fetch_pr_diff(repo: str, pr_number: int) -> str:
     return "\n".join(parts)
 
 
-# ── Step 2a: Code Explainer ─────────────────────────────────────────────────
+# ── Step 2a: Summarizer Agent ────────────────────────────────────────────────
 
-_EXPLAINER_SYSTEM = """\
+_SUMMARIZER_SYSTEM = """\
 You are an expert MuleSoft integration engineer.
 
 Read a MuleSoft PR diff and produce a concise, factual explanation for developers and \
@@ -119,7 +119,7 @@ Use plain sentences. Define MuleSoft terms on first mention.
 Do not include assumptions, guesses, or suggestions about intent."""
 
 
-async def run_explainer(diff: str) -> str:
+async def run_summarizer(diff: str) -> str:
     skill_path = SKILLS_DIR / "mulesoft" / "SKILL.md"
     mulesoft_knowledge = skill_path.read_text(encoding="utf-8") if skill_path.exists() else ""
 
@@ -132,7 +132,7 @@ async def run_explainer(diff: str) -> str:
         })
     system_blocks.append({
         "type": "text",
-        "text": _EXPLAINER_SYSTEM,
+        "text": _SUMMARIZER_SYSTEM,
         "cache_control": {"type": "ephemeral"},
     })
 
@@ -149,7 +149,7 @@ async def run_explainer(diff: str) -> str:
     return response.content[0].text
 
 
-# ── Step 2b: README Auditor ─────────────────────────────────────────────────
+# ── Step 2b: Documentation Auditor Agent ────────────────────────────────────
 
 _AUDIT_SYSTEM = """\
 You are a technical writer auditing markdown documentation against a code PR diff.
@@ -227,7 +227,11 @@ async def run_auditor(repo: str, diff: str) -> dict:
     response = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=2048,
-        system=_AUDIT_SYSTEM,
+        system=[{
+            "type": "text",
+            "text": _AUDIT_SYSTEM,
+            "cache_control": {"type": "ephemeral"},
+        }],
         messages=[{
             "role": "user",
             "content": (
@@ -267,13 +271,24 @@ async def run_alignment(design_doc_path: str, diff: str) -> dict:
     response = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=3000,
-        system=_ALIGNMENT_SYSTEM,
+        system=[{
+            "type": "text",
+            "text": _ALIGNMENT_SYSTEM,
+            "cache_control": {"type": "ephemeral"},
+        }],
         messages=[{
             "role": "user",
-            "content": (
-                f"Design document:\n\n{design_doc}\n\n---\n\n"
-                f"PR diff:\n```diff\n{diff}\n```"
-            ),
+            "content": [
+                {
+                    "type": "text",
+                    "text": f"Design document:\n\n{design_doc}",
+                    "cache_control": {"type": "ephemeral"},
+                },
+                {
+                    "type": "text",
+                    "text": f"\n\n---\n\nPR diff:\n```diff\n{diff}\n```",
+                },
+            ],
         }],
     )
     return _parse_json(response.content[0].text)

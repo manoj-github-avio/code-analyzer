@@ -1,4 +1,4 @@
-Run the code-analyzer auditor agent to check README and markdown docs for staleness.
+Run the code-analyzer documentation auditor agent to check markdown docs for staleness.
 
 Execute this bash command and show the full output:
 

@@ -1,11 +1,11 @@
 # Code Analyzer
 
 A Python MCP (Model Context Protocol) server that analyzes GitHub pull requests across three
-dimensions — code explanation, documentation drift, and design alignment — and posts a
+dimensions — code summarization, documentation drift, and design alignment — and posts a
 structured report directly on the PR.
 
-Built in 6 phases to demonstrate core Claude API and MCP concepts: tools, resources, prompt
-caching, parallel async agents, and GitHub MCP server integration.
+Demonstrates core Claude API and MCP concepts: tools, resources, prompt caching, parallel
+async agents, and GitHub MCP server integration.
 
 ---
 
@@ -32,8 +32,8 @@ code-analyzer orchestrator manoj-github-avio/code-analyzer 5 --no-post   # previ
 code-analyzer orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 
 # Run agents individually:
-code-analyzer explainer manoj-github-avio/code-analyzer 5
-code-analyzer explainer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+code-analyzer summarizer manoj-github-avio/code-analyzer 5
+code-analyzer summarizer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
 
 code-analyzer auditor manoj-github-avio/code-analyzer 5
 code-analyzer auditor manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
@@ -43,7 +43,7 @@ code-analyzer designer manoj-github-avio/code-analyzer --test samples/sample-mul
 
 # Help:
 code-analyzer --help
-code-analyzer explainer --help
+code-analyzer summarizer --help
 ```
 
 ### From Claude Code (slash commands)
@@ -52,7 +52,7 @@ Four slash commands are defined in `.claude/commands/` and available inside any 
 session opened in this project:
 
 ```
-/explainer    manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+/summarizer   manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
 /auditor      manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
 /designer     manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 /orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
@@ -76,8 +76,8 @@ src/main.py              ← thin wrapper (python3 src/main.py → orchestrator 
         │
         └── src/orchestrator.py          ← all async agent logic
               ├── fetch_pr_diff()        GitHub MCP → get_pull_request_files
-              ├── run_explainer()        Anthropic API + MuleSoft skill (prompt cached)
-              ├── run_auditor()          GitHub MCP + Anthropic API
+              ├── run_summarizer()       Anthropic API + MuleSoft skill (prompt cached)
+              ├── run_auditor()          GitHub MCP + Anthropic API (prompt cached)
               ├── run_alignment()        local file read + Anthropic API
               ├── format_report()        markdown aggregation
               └── post_pr_comment()     GitHub MCP → add_issue_comment
@@ -102,16 +102,18 @@ design-doc://local/{path}    →  exposes any local design doc as an MCP resourc
 
 ---
 
-## Project Phases
+## Build Log
 
-| Phase | What was built | Key concept |
-|-------|---------------|-------------|
-| [Phase 1](phases/PHASE_1.md) | MCP server skeleton + `ping` tool | FastMCP, stdio transport |
-| [Phase 2](phases/PHASE_2.md) | GitHub MCP server integration in Claude Desktop | MCP server composition |
-| [Phase 3](phases/PHASE_3.md) | MuleSoft PR explainer CLI + Claude Skill format | Prompt caching, skills |
-| [Phase 4](phases/PHASE_4.md) | README auditor + GitHub MCP client from Python | MCP client SDK, async tools |
-| [Phase 5](phases/PHASE_5.md) | Design alignment agent + `.docx` support | MCP resources, python-docx |
-| [Phase 6](phases/PHASE_6.md) | Parallel orchestrator + PR comment posting | `asyncio.gather`, AsyncAnthropic |
+| Step | What was built | Key concept |
+|------|---------------|-------------|
+| [Step 1](phases/PHASE_1.md) | MCP server skeleton + `ping` tool | FastMCP, stdio transport |
+| [Step 2](phases/PHASE_2.md) | GitHub MCP server integration in Claude Desktop | MCP server composition |
+| [Step 3](phases/PHASE_3.md) | Summarizer CLI + Claude Skill format | Prompt caching, skills |
+| [Step 4](phases/PHASE_4.md) | Documentation auditor + GitHub MCP client from Python | MCP client SDK, async tools |
+| [Step 5](phases/PHASE_5.md) | Design alignment agent + `.docx` support | MCP resources, python-docx |
+| [Step 6](phases/PHASE_6.md) | Parallel orchestrator + PR comment posting | `asyncio.gather`, AsyncAnthropic |
+
+See [Claude Concepts](phases/CLAUDE_CONCEPTS.md) for a beginner-friendly explanation of every Claude API and MCP concept used in this project.
 
 ---
 
