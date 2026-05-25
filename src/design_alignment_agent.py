@@ -28,30 +28,25 @@ load_dotenv()
 
 _ALIGNMENT_SYSTEM = """You are a software architect reviewing a PR diff for alignment with a design document.
 
-Given a design document and a PR diff, identify:
-- Where the change aligns with approved design decisions
-- Where the change drifts from or contradicts the design
-
-Return ONLY valid JSON:
+Return ONLY valid JSON — no markdown fences:
 {
   "drifts": [
     {
       "area": "Error Handling",
       "issue": "PR returns HTTP 503 for database connectivity errors; design mandates HTTP 500 for all runtime errors.",
-      "severity": "high",
-      "suggestion": "Change the on-error-continue payload to return HTTP 500, not 503."
+      "severity": "high"
     }
   ],
-  "aligned": [
-    "Correlation ID is captured from the inbound request and stored in a flow variable as required by design section 3."
-  ],
-  "summary": "2 drift(s) detected, 3 areas aligned with the design"
+  "summary": "2 issue(s) detected"
 }
 
-severity must be "high", "medium", or "low".
-- high: directly contradicts an explicit design decision or introduces an out-of-scope feature
-- medium: deviates from a recommended pattern but does not break a hard rule
-- low: style or minor inconsistency
+Rules:
+- Only include drifts with severity "high" or "medium" — omit low severity issues.
+- Do NOT include an "aligned" list.
+- Do NOT include fix suggestions — only state the issue.
+- severity must be "high" or "medium".
+- high: directly contradicts an explicit design decision or introduces an out-of-scope feature.
+- medium: deviates from a recommended pattern but does not break a hard rule.
 """
 
 

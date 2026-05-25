@@ -97,31 +97,22 @@ async def fetch_pr_diff(repo: str, pr_number: int) -> str:
 # ── Step 2a: Code Explainer ─────────────────────────────────────────────────
 
 _EXPLAINER_SYSTEM = """\
-You are an expert MuleSoft integration engineer who excels at explaining technical changes \
-to non-technical stakeholders.
+You are an expert MuleSoft integration engineer.
 
-Read a MuleSoft PR diff and produce a clear, plain-English explanation useful to:
-1. Developers unfamiliar with MuleSoft.
-2. Non-technical readers (business analysts, QA, product owners).
+Read a MuleSoft PR diff and produce a concise, factual explanation for developers and \
+non-technical readers.
 
-Structure your explanation as:
+Structure your output as:
 
 ## Summary
-One or two sentences. What does this change do?
+A factual description of what this change does. Be as detailed as needed — no artificial limits.
 
-## What changed
-Bullet list of specific modifications — flows, connectors, DataWeave, error handling.
+## What Changed
+Bullet list of the specific modifications — flows added/removed/modified, connectors touched, \
+DataWeave transformations updated, configuration changes. Facts only.
 
-## Systems involved
-Which external systems are touched? Any new dependencies introduced?
-
-## Error handling
-What happens when something goes wrong?
-
-## Impact assessment
-Is this breaking? Who should be notified or needs to test this?
-
-Use plain sentences. Avoid XML snippets. Define MuleSoft terms on first mention."""
+Use plain sentences. Avoid XML snippets. Define MuleSoft terms on first mention.
+Do not include assumptions, guesses, or suggestions about intent."""
 
 
 async def run_explainer(diff: str) -> str:
@@ -162,13 +153,22 @@ You are a technical writer auditing markdown documentation against a code PR dif
 Return ONLY valid JSON — no markdown fences:
 {
   "files_to_update": [
-    {"file": "README.md", "section": "API Endpoints", "status": "needs_update", "suggestion": "..."},
-    {"file": "CONTRIBUTING.md", "section": "Setup", "status": "up_to_date"}
+    {
+      "file": "README.md",
+      "status": "needs_update",
+      "suggestion": "- Update API endpoint descriptions\\n- Add new Postman environment file to setup section"
+    }
   ],
-  "summary": "1 of 2 files needs updates"
+  "summary": "1 of 1 files needs updates"
 }
 
-status must be "needs_update" or "up_to_date". Include every markdown file."""
+Rules:
+- Only include files with status "needs_update" — omit files that are up to date.
+- suggestion must be a markdown bullet list (each item starts with "- ").
+- No code examples, no endpoint paths, no JSON snippets in suggestions.
+- Keep suggestions brief and plain: describe what to update, not how.
+- Only include actionable changes tied to what actually changed in the diff.
+- summary must state how many files need updates out of total markdown files found."""
 
 
 async def _fetch_md_files(session: ClientSession, owner: str, repo_name: str) -> list:
@@ -243,13 +243,18 @@ You are a software architect reviewing a PR diff for alignment with a design doc
 Return ONLY valid JSON — no markdown fences:
 {
   "drifts": [
-    {"area": "Error Handling", "issue": "...", "severity": "high", "suggestion": "..."}
+    {"area": "Error Handling", "issue": "...", "severity": "high"}
   ],
-  "aligned": ["Correlation ID captured from inbound request as required by design section 3"],
-  "summary": "2 drift(s) detected, 3 areas aligned"
+  "summary": "2 issue(s) detected"
 }
 
-severity must be "high", "medium", or "low"."""
+Rules:
+- Only include drifts with severity "high" or "medium" — omit low severity issues.
+- Do NOT include an "aligned" list.
+- Do NOT include fix suggestions — only state the issue.
+- severity must be "high" or "medium".
+- high: directly contradicts an explicit design decision or introduces an out-of-scope feature.
+- medium: deviates from a recommended pattern but does not break a hard rule."""
 
 
 async def run_alignment(design_doc_path: str, diff: str) -> dict:
@@ -273,42 +278,34 @@ async def run_alignment(design_doc_path: str, diff: str) -> dict:
 # ── Step 3: Format report ───────────────────────────────────────────────────
 
 def format_report(repo: str, pr_number: int, explanation: str, audit: dict, alignment: dict) -> str:
+    # Strip duplicate "## Summary" heading — the section header below provides it
+    explanation_text = explanation.strip()
+    if explanation_text.startswith("## Summary"):
+        explanation_text = explanation_text[len("## Summary"):].lstrip("\n")
+
     lines = [
         "## 🤖 Code Analyzer Report",
         "",
-        f"**Repository:** `{repo}` &nbsp;|&nbsp; **PR:** #{pr_number}",
+        "---",
+        "",
+        "## 📝 Summary",
+        "",
+        explanation_text,
         "",
         "---",
         "",
-        "## 📝 Code Summary",
-        "",
-        explanation.strip(),
-        "",
-        "---",
-        "",
-        "## 📚 README Updates Needed",
+        "## 📚 Documentation Updates Needed",
         "",
         f"**{audit.get('summary', 'No markdown files found')}**",
         "",
     ]
 
-    files = audit.get("files_to_update", [])
-    needs_update = [f for f in files if f.get("status") == "needs_update"]
-    up_to_date = [f for f in files if f.get("status") == "up_to_date"]
+    needs_update = [f for f in audit.get("files_to_update", []) if f.get("status") == "needs_update"]
 
-    if needs_update:
-        lines += ["| File | Section | Suggested update |",
-                  "|------|---------|------------------|"]
-        for f in needs_update:
-            lines.append(f"| `{f['file']}` | {f.get('section', '—')} | {f.get('suggestion', '—')} |")
-        lines.append("")
-
-    if up_to_date:
-        names = ", ".join(f"`{f['file']}`" for f in up_to_date)
-        lines += [f"**Up to date:** {names}", ""]
+    for f in needs_update:
+        lines += [f"**`{f['file']}`**", f.get("suggestion", "").strip(), ""]
 
     drifts = alignment.get("drifts", [])
-    aligned = alignment.get("aligned", [])
 
     lines += [
         "---",
@@ -320,22 +317,14 @@ def format_report(repo: str, pr_number: int, explanation: str, audit: dict, alig
     ]
 
     if drifts:
-        lines += ["### ❌ Drift Issues", ""]
         for d in drifts:
-            emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(d.get("severity", "medium"), "🟡")
-            lines += [
-                f"**{emoji} [{d.get('severity', 'medium').upper()}] {d['area']}**",
-                f"- **Issue:** {d['issue']}",
-            ]
-            if d.get("suggestion"):
-                lines.append(f"- **Fix:** {d['suggestion']}")
-            lines.append("")
-
-    if aligned:
-        lines += ["### ✅ Aligned with Design", ""]
-        for a in aligned:
-            lines.append(f"- {a}")
+            emoji = {"high": "🔴", "medium": "🟡"}.get(d.get("severity", "medium"), "🟡")
+            lines.append(
+                f"- {emoji} **[{d.get('severity', 'medium').upper()}] {d['area']}:** {d['issue']}"
+            )
         lines.append("")
+    else:
+        lines += ["No drift issues detected.", ""]
 
     lines += [
         "---",
