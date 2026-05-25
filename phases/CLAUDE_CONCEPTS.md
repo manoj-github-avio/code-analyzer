@@ -111,19 +111,31 @@ MCP is an open standard for connecting AI models to external tools and data sour
 **As a server** (`src/server.py`) — exposes tools to Claude Desktop:
 ```python
 from fastmcp import FastMCP
-mcp = FastMCP("code-analyzer")
+mcp = FastMCP("pr-analyzer")
 
 @mcp.tool()
-def ping() -> dict:
-    return {"status": "pong"}
-
-@mcp.resource("design-doc://local/{path}")
-def design_doc_resource(path: str) -> str:
-    return _read_design_doc(path)
+async def run_pr_analyzer(repo: str, pr_number: int | None = None, design_doc_path: str | None = None) -> str:
+    """Run full PR analysis including code summary, documentation audit and design alignment on a GitHub PR.
+    Finds latest open PR automatically if pr_number not provided."""
+    ...
 
 if __name__ == "__main__":
     mcp.run(transport="stdio", show_banner=False)
 ```
+
+**Tool descriptions drive natural language tool selection.** Claude Desktop reads each tool's
+docstring and uses it to decide which tool to call based on what you type in chat. This is
+why tool descriptions matter:
+
+| User says | Claude picks |
+|-----------|-------------|
+| "run pr analysis for open PR for student api" | `run_pr_analyzer` |
+| "summarize the open PR for student api" | `run_summarizer` |
+| "check documentation for open PR for student api" | `run_documentation_auditor` |
+| "check design alignment for open PR..." | `run_design_alignment` |
+
+The description `"Finds latest open PR automatically if pr_number not provided."` tells Claude
+it can call the tool without a PR number — enabling fully natural conversational requests.
 
 **As a client** (`src/orchestrator.py`) — calls the GitHub MCP server from Python:
 ```python
@@ -257,3 +269,10 @@ Turn 3: [context(cache hit) + Q1+A1+Q2+A2 + question3] → cache read again
 - Subsequent turns: plain string messages appended to the growing array
 - System prompt is also cached (stable across all turns)
 - Max 10 turns by default; exits gracefully on `exit`/`quit`/empty input
+
+**Why FollowUpChat is not used in Claude Desktop:**
+Claude Desktop natively maintains conversation context — the tool result is already visible in
+the chat thread, and you can ask follow-up questions by simply continuing the conversation.
+There is no need to implement a custom multi-turn loop because the host (Claude Desktop)
+already manages the messages array. `FollowUpChat` is only needed for CLI contexts where there
+is no host to manage conversation state between turns.

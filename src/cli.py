@@ -1,13 +1,13 @@
 """
-code-analyzer CLI — unified Click entry point for all four agents.
+pr-analyzer CLI — unified Click entry point for all agents.
 
 All agent logic is imported directly from orchestrator.py.
 
 Usage (after pip install -e .):
-    code-analyzer summarizer            <repo> <pr_number> [--test DIFF_FILE] [--no-post]
-    code-analyzer documentation-auditor <repo> <pr_number> [--test DIFF_FILE] [--no-post]
-    code-analyzer designer              <repo> <pr_number> [DESIGN_DOC] [--test DIFF_FILE] [--no-post]
-    code-analyzer orchestrator          <repo> <pr_number> [DESIGN_DOC] [--test DIFF_FILE] [--no-post]
+    pr-analyzer summarizer            <repo> <pr_number> [--test DIFF_FILE] [--no-post]
+    pr-analyzer documentation-auditor <repo> <pr_number> [--test DIFF_FILE] [--no-post]
+    pr-analyzer designer              <repo> <pr_number> [DESIGN_DOC] [--test DIFF_FILE] [--no-post]
+    pr-analyzer orchestrator          <repo> <pr_number> [DESIGN_DOC] [--test DIFF_FILE] [--no-post]
 
 Usage (without install):
     python3 src/cli.py <subcommand> ...
@@ -48,7 +48,7 @@ def _resolve_pr(value: str | None) -> int:
 
 @click.group()
 def cli():
-    """Code Analyzer — analyze GitHub pull requests with Claude."""
+    """PR Analyzer — analyze GitHub pull requests with Claude."""
 
 
 # ── summarizer ───────────────────────────────────────────────────────────────
@@ -69,9 +69,9 @@ def summarizer_cmd(repo, pr_number, test, no_post):
 
     \b
     Examples:
-      code-analyzer summarizer manoj-github-avio/student-api 1
-      code-analyzer summarizer manoj-github-avio/student-api 1 --no-post
-      code-analyzer summarizer manoj-github-avio/student-api --test samples/sample-mule-pr.diff
+      pr-analyzer summarizer manoj-github-avio/student-api 1
+      pr-analyzer summarizer manoj-github-avio/student-api 1 --no-post
+      pr-analyzer summarizer manoj-github-avio/student-api --test samples/sample-mule-pr.diff
     """
     from orchestrator import fetch_pr_diff, format_summary_comment, post_pr_comment, run_summarizer
 
@@ -146,9 +146,9 @@ def documentation_auditor_cmd(repo, pr_number, test, no_post):
 
     \b
     Examples:
-      code-analyzer documentation-auditor manoj-github-avio/student-api 1
-      code-analyzer documentation-auditor manoj-github-avio/student-api 1 --no-post
-      code-analyzer documentation-auditor manoj-github-avio/student-api --test samples/sample-mule-pr.diff
+      pr-analyzer documentation-auditor manoj-github-avio/student-api 1
+      pr-analyzer documentation-auditor manoj-github-avio/student-api 1 --no-post
+      pr-analyzer documentation-auditor manoj-github-avio/student-api --test samples/sample-mule-pr.diff
     """
     from orchestrator import fetch_pr_diff, format_audit_comment, post_pr_comment, run_auditor
 
@@ -232,9 +232,9 @@ def designer_cmd(repo, pr_number, design_doc, test, no_post):
 
     \b
     Examples:
-      code-analyzer designer manoj-github-avio/student-api 1 path/to/sdd.docx
-      code-analyzer designer manoj-github-avio/student-api 1 --no-post
-      code-analyzer designer manoj-github-avio/student-api --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
+      pr-analyzer designer manoj-github-avio/student-api 1 path/to/sdd.docx
+      pr-analyzer designer manoj-github-avio/student-api 1 --no-post
+      pr-analyzer designer manoj-github-avio/student-api --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
     """
     from orchestrator import fetch_pr_diff, format_alignment_comment, post_pr_comment, run_alignment
 
@@ -317,11 +317,11 @@ def orchestrator_cmd(repo, pr_number, design_doc, test, no_post):
 
     \b
     Examples:
-      code-analyzer orchestrator manoj-github-avio/student-api 1
-      code-analyzer orchestrator manoj-github-avio/student-api 1 path/to/sdd.docx
-      code-analyzer orchestrator manoj-github-avio/student-api 1 --no-post
-      code-analyzer orchestrator manoj-github-avio/student-api --test samples/sample-mule-pr.diff
-      code-analyzer orchestrator manoj-github-avio/student-api --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
+      pr-analyzer orchestrator manoj-github-avio/student-api 1
+      pr-analyzer orchestrator manoj-github-avio/student-api 1 path/to/sdd.docx
+      pr-analyzer orchestrator manoj-github-avio/student-api 1 --no-post
+      pr-analyzer orchestrator manoj-github-avio/student-api --test samples/sample-mule-pr.diff
+      pr-analyzer orchestrator manoj-github-avio/student-api --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
     """
     from orchestrator import (
         fetch_pr_diff,

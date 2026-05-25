@@ -1,9 +1,9 @@
-Run the code-analyzer designer agent to check a PR diff for alignment with a design document and post a comment to the PR.
+Run the pr-analyzer designer agent to check a PR diff for alignment with a design document and post a comment to the PR.
 
 Execute this bash command and show the full output:
 
 ```bash
-code-analyzer designer $ARGUMENTS
+pr-analyzer designer $ARGUMENTS
 ```
 
 The designer fetches the PR diff from GitHub, compares it against a local design document,

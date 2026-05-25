@@ -1,9 +1,9 @@
-Run the code-analyzer summarizer agent to explain a PR diff in plain English and post a comment to the PR.
+Run the pr-analyzer summarizer agent to explain a PR diff in plain English and post a comment to the PR.
 
 Execute this bash command and show the full output:
 
 ```bash
-code-analyzer summarizer $ARGUMENTS
+pr-analyzer summarizer $ARGUMENTS
 ```
 
 The summarizer fetches the PR diff from GitHub, produces a plain-English summary and what-changed bullets,

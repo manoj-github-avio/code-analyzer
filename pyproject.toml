@@ -19,6 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
+pr-analyzer = "src.cli:cli"
 code-analyzer = "src.cli:cli"
 
 [project.optional-dependencies]

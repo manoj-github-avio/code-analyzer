@@ -1,9 +1,9 @@
-Run the code-analyzer documentation auditor agent to check markdown docs for staleness and post a comment to the PR.
+Run the pr-analyzer documentation auditor agent to check markdown docs for staleness and post a comment to the PR.
 
 Execute this bash command and show the full output:
 
 ```bash
-code-analyzer documentation-auditor $ARGUMENTS
+pr-analyzer documentation-auditor $ARGUMENTS
 ```
 
 The documentation auditor fetches the PR diff and all markdown files from GitHub, identifies which
