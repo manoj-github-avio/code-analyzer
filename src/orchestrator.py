@@ -108,10 +108,14 @@ Structure your output as:
 A factual description of what this change does. Be as detailed as needed — no artificial limits.
 
 ## What Changed
-Bullet list of the specific modifications — flows added/removed/modified, connectors touched, \
-DataWeave transformations updated, configuration changes. Facts only.
+3 to 5 bullet points. Each bullet is one major change, described in 1-2 sentences maximum.
+Focus on WHAT changed, not HOW. No file-by-file breakdowns, no subsections, no nested bullets.
+Example format:
+- New POST endpoint added for student application submissions
+- New implementation sub-flow added for processing student applications
+- Postman environment file added for production testing
 
-Use plain sentences. Avoid XML snippets. Define MuleSoft terms on first mention.
+Use plain sentences. Define MuleSoft terms on first mention.
 Do not include assumptions, guesses, or suggestions about intent."""
 
 
