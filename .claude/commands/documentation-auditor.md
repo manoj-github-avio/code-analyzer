@@ -12,11 +12,11 @@ No comment is posted if no documentation updates are needed.
 Use --test to load a local diff file instead (no comment is posted in test mode).
 
 Usage:
-  /auditor <owner/repo> <pr_number>
-  /auditor <owner/repo> <pr_number> --no-post
-  /auditor <owner/repo> --test <diff-file>
+  /documentation-auditor <owner/repo> <pr_number>
+  /documentation-auditor <owner/repo> <pr_number> --no-post
+  /documentation-auditor <owner/repo> --test <diff-file>
 
 Examples:
-  /auditor manoj-github-avio/student-api 1
-  /auditor manoj-github-avio/student-api 1 --no-post
-  /auditor manoj-github-avio/student-api --test samples/sample-mule-pr.diff
+  /documentation-auditor manoj-github-avio/student-api 1
+  /documentation-auditor manoj-github-avio/student-api 1 --no-post
+  /documentation-auditor manoj-github-avio/student-api --test samples/sample-mule-pr.diff

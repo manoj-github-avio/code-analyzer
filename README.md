@@ -24,42 +24,51 @@ cp .env.example .env          # fill in ANTHROPIC_API_KEY and GITHUB_PERSONAL_AC
 After `pip install -e .`, the `code-analyzer` command is available anywhere in the virtualenv:
 
 ```bash
-# Full analysis — fetch diff, run all agents, post PR comment:
-code-analyzer orchestrator manoj-github-avio/code-analyzer 5 samples/design-doc-sample.docx
-code-analyzer orchestrator manoj-github-avio/code-analyzer 5 --no-post   # preview without posting
+# Orchestrator — run all agents, post combined PR comment:
+code-analyzer orchestrator manoj-github-avio/student-api 1
+code-analyzer orchestrator manoj-github-avio/student-api 1 path/to/sdd.docx   # with design doc
+code-analyzer orchestrator manoj-github-avio/student-api 1 --no-post          # preview without posting
 
 # Test mode — local diff file, no GitHub PR needed:
-code-analyzer orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
+code-analyzer orchestrator manoj-github-avio/student-api --test samples/sample-mule-pr.diff
+code-analyzer orchestrator manoj-github-avio/student-api --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 
-# Run agents individually:
-code-analyzer summarizer manoj-github-avio/code-analyzer 5
-code-analyzer summarizer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+# Individual agents — each posts its own PR comment:
+code-analyzer summarizer manoj-github-avio/student-api 1
+code-analyzer documentation-auditor manoj-github-avio/student-api 1
+code-analyzer designer manoj-github-avio/student-api 1 path/to/sdd.docx
 
-code-analyzer auditor manoj-github-avio/code-analyzer 5
-code-analyzer auditor manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
+# Preview individual agents without posting:
+code-analyzer summarizer manoj-github-avio/student-api 1 --no-post
+code-analyzer documentation-auditor manoj-github-avio/student-api 1 --no-post
 
-code-analyzer designer manoj-github-avio/code-analyzer 5 samples/design-doc-sample.docx
-code-analyzer designer manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
+# Test mode for individual agents:
+code-analyzer summarizer manoj-github-avio/student-api --test samples/sample-mule-pr.diff
+code-analyzer documentation-auditor manoj-github-avio/student-api --test samples/sample-mule-pr.diff
+code-analyzer designer manoj-github-avio/student-api --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
 
 # Help:
 code-analyzer --help
 code-analyzer summarizer --help
+code-analyzer orchestrator --help
 ```
 
 ### From Claude Code (slash commands)
 
-Four slash commands are defined in `.claude/commands/` and available inside any Claude Code
+Five slash commands are defined in `.claude/commands/` and available inside any Claude Code
 session opened in this project:
 
 ```
-/summarizer   manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
-/auditor      manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff
-/designer     manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
-/orchestrator manoj-github-avio/code-analyzer --test samples/sample-mule-pr.diff samples/design-doc-sample.docx
+/summarizer            manoj-github-avio/student-api 1
+/documentation-auditor manoj-github-avio/student-api 1
+/designer              manoj-github-avio/student-api 1 path/to/sdd.docx
+/orchestrator          manoj-github-avio/student-api 1
+/orchestrator          manoj-github-avio/student-api 1 path/to/sdd.docx
 ```
 
 Each slash command tells Claude to run the corresponding `code-analyzer` CLI subcommand
-and show the output.
+and show the output. Individual agents post their own PR comment; the orchestrator posts
+a combined report.
 
 ---
 
@@ -75,12 +84,15 @@ src/cli.py               ← Click CLI, registered as 'code-analyzer' console sc
 src/main.py              ← thin wrapper (python3 src/main.py → orchestrator subcommand)
         │
         └── src/orchestrator.py          ← all async agent logic
-              ├── fetch_pr_diff()        GitHub MCP → get_pull_request_files
-              ├── run_summarizer()       Anthropic API + MuleSoft skill (prompt cached)
-              ├── run_auditor()          GitHub MCP + Anthropic API (prompt cached)
-              ├── run_alignment()        local file read + Anthropic API
-              ├── format_report()        markdown aggregation
-              └── post_pr_comment()     GitHub MCP → add_issue_comment
+              ├── fetch_pr_diff()              GitHub MCP → get_pull_request_files
+              ├── run_summarizer()             Anthropic API + MuleSoft skill (prompt cached)
+              ├── run_auditor()                GitHub MCP + Anthropic API (prompt cached)
+              ├── run_alignment()              local file read + Anthropic API (prompt cached)
+              ├── format_summary_comment()     markdown for summarizer PR comment
+              ├── format_audit_comment()       markdown for auditor PR comment
+              ├── format_alignment_comment()   markdown for designer PR comment
+              ├── format_report()              combined orchestrator report (optional alignment)
+              └── post_pr_comment()            GitHub MCP → add_issue_comment
 ```
 
 ### MCP server tools (src/server.py)

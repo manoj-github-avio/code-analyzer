@@ -21,7 +21,9 @@
       "Bash(cp /tmp/test_change.md /Users/mambolla/code-analyzer/test_change.md)",
       "Bash(code-analyzer orchestrator *)",
       "Bash(code-analyzer --help)",
-      "Bash(code-analyzer summarizer *)"
+      "Bash(code-analyzer summarizer *)",
+      "Bash(code-analyzer documentation-auditor *)",
+      "Bash(code-analyzer designer *)"
     ]
   }
 }
