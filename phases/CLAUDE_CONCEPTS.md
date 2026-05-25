@@ -211,3 +211,51 @@ response = await client.messages.create(
     messages=[{"role": "user", "content": f"PR diff:\n{diff}"}],
 )
 ```
+
+---
+
+## 8. Multi-turn Conversations
+
+Claude maintains conversation context through the `messages` array — each request includes the full history of user/assistant turns so far.
+
+**How the messages array works:**
+- Each element is `{"role": "user" | "assistant", "content": "..."}` 
+- You append each new user question and assistant reply to the array
+- On every API call, you send the entire array — Claude sees the full conversation
+- There is no server-side session state; the client owns the history
+
+**Example — growing messages array** (`src/follow_up_chat.py`):
+```python
+messages = []
+
+# Turn 1: first user message (with cached context)
+messages.append({
+    "role": "user",
+    "content": [
+        {"type": "text", "text": context_summary, "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": user_question},
+    ],
+})
+reply = client.messages.create(..., messages=messages).content[0].text
+messages.append({"role": "assistant", "content": reply})
+
+# Turn 2: just the new question
+messages.append({"role": "user", "content": "Follow-up question..."})
+reply = client.messages.create(..., messages=messages).content[0].text
+messages.append({"role": "assistant", "content": reply})
+```
+
+**Why caching helps here:**
+The first user message contains the full agent analysis (potentially several KB). Without caching, that analysis would be re-sent and re-processed on every follow-up turn. With `cache_control: ephemeral`, the first message is cached for ~5 minutes — subsequent turns only pay for the new question tokens, not the full context.
+
+```
+Turn 1: [context(cached) + question1]                 → ~2000 tokens written to cache
+Turn 2: [context(cache hit) + Q1 + A1 + question2]   → cache read, only Q1+A1+Q2 billed
+Turn 3: [context(cache hit) + Q1+A1+Q2+A2 + question3] → cache read again
+```
+
+**This project's implementation** (`src/follow_up_chat.py`):
+- First turn: embeds the agent's analysis as a cached content block alongside the question
+- Subsequent turns: plain string messages appended to the growing array
+- System prompt is also cached (stable across all turns)
+- Max 10 turns by default; exits gracefully on `exit`/`quit`/empty input

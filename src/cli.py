@@ -75,6 +75,8 @@ def summarizer_cmd(repo, pr_number, test, no_post):
     """
     from orchestrator import fetch_pr_diff, format_summary_comment, post_pr_comment, run_summarizer
 
+    result: dict = {}
+
     async def _run():
         if test:
             diff = _load_diff(test)
@@ -85,6 +87,8 @@ def summarizer_cmd(repo, pr_number, test, no_post):
             elapsed = time.perf_counter() - t0
             click.echo(format_summary_comment(explanation))
             click.echo(f"\n[Done in {elapsed:.1f}s]", err=True)
+            result["explanation"] = explanation
+            result["label"] = test
         else:
             pr_num = _resolve_pr(pr_number)
             click.echo(f"Fetching diff for {repo} PR #{pr_num}...", err=True)
@@ -104,8 +108,24 @@ def summarizer_cmd(repo, pr_number, test, no_post):
                 click.echo(f"\nPosting comment to PR...", err=True)
                 await post_pr_comment(repo, pr_num, comment)
                 click.echo(f"✓ Posted to {repo} PR #{pr_num}. Done in {elapsed:.1f}s.", err=True)
+            result["explanation"] = explanation
+            result["label"] = f"{repo} PR #{pr_num}"
 
     asyncio.run(_run())
+
+    if "explanation" in result:
+        from follow_up_chat import FollowUpChat
+        FollowUpChat(
+            agent_name="Summarizer",
+            context_summary=(
+                f"PR analysis — {result['label']}:\n\n{result['explanation']}"
+            ),
+            system_prompt=(
+                "You are a MuleSoft integration expert. The user has questions about a PR "
+                "analysis you just completed. Answer concisely and specifically based on "
+                "the analysis above. If asked about something not covered, say so."
+            ),
+        ).start()
 
 
 # ── documentation-auditor ────────────────────────────────────────────────────
@@ -132,17 +152,22 @@ def documentation_auditor_cmd(repo, pr_number, test, no_post):
     """
     from orchestrator import fetch_pr_diff, format_audit_comment, post_pr_comment, run_auditor
 
+    result: dict = {}
+
     async def _run():
         if test:
             diff = _load_diff(test)
             click.echo(f"[TEST] Loaded {len(diff)} chars from {test}", err=True)
             click.echo(f"Auditing markdown files in {repo}...", err=True)
             t0 = time.perf_counter()
-            results = await run_auditor(repo, diff)
+            audit = await run_auditor(repo, diff)
             elapsed = time.perf_counter() - t0
-            comment = format_audit_comment(results)
+            comment = format_audit_comment(audit)
             click.echo(comment if comment else "No documentation updates needed.")
             click.echo(f"\n[Done in {elapsed:.1f}s]", err=True)
+            result["audit"] = audit
+            result["comment"] = comment
+            result["label"] = test
         else:
             pr_num = _resolve_pr(pr_number)
             click.echo(f"Fetching diff for {repo} PR #{pr_num}...", err=True)
@@ -152,9 +177,9 @@ def documentation_auditor_cmd(repo, pr_number, test, no_post):
                 raise SystemExit(1)
             click.echo(f"Fetched {len(diff)} chars. Auditing markdown files in {repo}...", err=True)
             t0 = time.perf_counter()
-            results = await run_auditor(repo, diff)
+            audit = await run_auditor(repo, diff)
             elapsed = time.perf_counter() - t0
-            comment = format_audit_comment(results)
+            comment = format_audit_comment(audit)
             if comment:
                 click.echo(comment)
                 if no_post:
@@ -166,8 +191,24 @@ def documentation_auditor_cmd(repo, pr_number, test, no_post):
             else:
                 click.echo("No documentation updates needed — no comment posted.", err=True)
                 click.echo(f"[Done in {elapsed:.1f}s]", err=True)
+            result["audit"] = audit
+            result["comment"] = comment
+            result["label"] = f"{repo} PR #{pr_num}"
 
     asyncio.run(_run())
+
+    if "audit" in result:
+        from follow_up_chat import FollowUpChat
+        summary = result["comment"] or f"Documentation audit for {result['label']}: no updates needed."
+        FollowUpChat(
+            agent_name="Documentation Auditor",
+            context_summary=f"Documentation audit — {result['label']}:\n\n{summary}",
+            system_prompt=(
+                "You are a technical documentation reviewer. The user has questions about "
+                "documentation updates identified in a PR. Answer specifically based on the "
+                "findings above. Be concise."
+            ),
+        ).start()
 
 
 # ── designer ─────────────────────────────────────────────────────────────────
@@ -197,6 +238,8 @@ def designer_cmd(repo, pr_number, design_doc, test, no_post):
     """
     from orchestrator import fetch_pr_diff, format_alignment_comment, post_pr_comment, run_alignment
 
+    result: dict = {}
+
     async def _run():
         if test:
             diff = _load_diff(test)
@@ -204,10 +247,14 @@ def designer_cmd(repo, pr_number, design_doc, test, no_post):
             click.echo(f"Design doc: {design_doc}", err=True)
             click.echo("Checking design alignment...", err=True)
             t0 = time.perf_counter()
-            results = await run_alignment(design_doc, diff)
+            alignment = await run_alignment(design_doc, diff)
             elapsed = time.perf_counter() - t0
-            click.echo(format_alignment_comment(results))
+            comment = format_alignment_comment(alignment)
+            click.echo(comment)
             click.echo(f"\n[Done in {elapsed:.1f}s]", err=True)
+            result["alignment"] = alignment
+            result["comment"] = comment
+            result["label"] = test
         else:
             pr_num = _resolve_pr(pr_number)
             click.echo(f"Fetching diff for {repo} PR #{pr_num}...", err=True)
@@ -218,9 +265,9 @@ def designer_cmd(repo, pr_number, design_doc, test, no_post):
             click.echo(f"Fetched {len(diff)} chars. Design doc: {design_doc}", err=True)
             click.echo("Checking design alignment...", err=True)
             t0 = time.perf_counter()
-            results = await run_alignment(design_doc, diff)
+            alignment = await run_alignment(design_doc, diff)
             elapsed = time.perf_counter() - t0
-            comment = format_alignment_comment(results)
+            comment = format_alignment_comment(alignment)
             click.echo(comment)
             if no_post:
                 click.echo(f"\n[--no-post] Skipped PR comment. Done in {elapsed:.1f}s.", err=True)
@@ -228,8 +275,23 @@ def designer_cmd(repo, pr_number, design_doc, test, no_post):
                 click.echo(f"\nPosting comment to PR...", err=True)
                 await post_pr_comment(repo, pr_num, comment)
                 click.echo(f"✓ Posted to {repo} PR #{pr_num}. Done in {elapsed:.1f}s.", err=True)
+            result["alignment"] = alignment
+            result["comment"] = comment
+            result["label"] = f"{repo} PR #{pr_num}"
 
     asyncio.run(_run())
+
+    if "alignment" in result:
+        from follow_up_chat import FollowUpChat
+        FollowUpChat(
+            agent_name="Design Alignment",
+            context_summary=f"Design alignment analysis — {result['label']}:\n\n{result['comment']}",
+            system_prompt=(
+                "You are a software architect. The user has questions about design drift "
+                "issues found in a PR. Answer specifically based on the findings above. "
+                "Be concise and reference the specific issues identified."
+            ),
+        ).start()
 
 
 # ── orchestrator ──────────────────────────────────────────────────────────────
@@ -270,6 +332,8 @@ def orchestrator_cmd(repo, pr_number, design_doc, test, no_post):
         run_summarizer,
     )
 
+    result: dict = {}
+
     async def _gather(diff: str):
         if design_doc:
             explanation, audit, alignment = await asyncio.gather(
@@ -292,8 +356,11 @@ def orchestrator_cmd(repo, pr_number, design_doc, test, no_post):
             explanation, audit, alignment = await _gather(diff)
             elapsed = time.perf_counter() - t0
             click.echo(f"[TEST] All agents done in {elapsed:.1f}s. Formatting report...", err=True)
-            click.echo(format_report(explanation, audit, alignment))
+            report = format_report(explanation, audit, alignment)
+            click.echo(report)
             click.echo(f"\n[TEST] Done. Total: {elapsed:.1f}s. No PR comment posted.", err=True)
+            result["report"] = report
+            result["label"] = test
         else:
             pr_num = _resolve_pr(pr_number)
             click.echo(f"Fetching diff for {repo} PR #{pr_num}...", err=True)
@@ -315,8 +382,22 @@ def orchestrator_cmd(repo, pr_number, design_doc, test, no_post):
                 click.echo("\nPosting comment to PR...", err=True)
                 await post_pr_comment(repo, pr_num, report)
                 click.echo(f"✓ Posted to {repo} PR #{pr_num}", err=True)
+            result["report"] = report
+            result["label"] = f"{repo} PR #{pr_num}"
 
     asyncio.run(_run())
+
+    if "report" in result:
+        from follow_up_chat import FollowUpChat
+        FollowUpChat(
+            agent_name="Code Analyzer",
+            context_summary=f"Full PR analysis — {result['label']}:\n\n{result['report']}",
+            system_prompt=(
+                "You are a code review expert. The user has questions about a PR analysis "
+                "covering code changes, documentation updates, and design alignment. "
+                "Answer based on the report above. Be concise and specific."
+            ),
+        ).start()
 
 
 if __name__ == "__main__":

@@ -72,6 +72,31 @@ a combined report.
 
 ---
 
+## Follow-up Questions
+
+After any agent finishes its analysis, you'll be prompted to ask follow-up questions interactively:
+
+```
+--- Summarizer Follow-up Chat ---
+Type 'exit' or press Enter to quit.
+
+> What does the flow-ref bug mean in practice?
+
+The POST endpoint is wired to get-student-applications-impl instead of
+post-student-applications-impl. In practice this means any POST request
+silently executes the GET logic — the new sub-flow is dead code.
+
+> Is this a blocking bug before merge?
+...
+```
+
+The initial analysis is prompt-cached, so follow-up turns are fast and cheap.
+Type `exit`, `quit`, or press `Enter` to end. Max 10 turns per session.
+
+Works with all commands: `summarizer`, `documentation-auditor`, `designer`, `orchestrator`.
+
+---
+
 ## Architecture
 
 ```
